@@ -60,7 +60,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This should NOT be accessed from multiple threads
 	 */
-	public void save3d(Entry<RegionLocation3D, EntryLocation3D> entry) {
+	public void save3d(Entry<RegionLocation3D, EntryLocation3D> entry) throws IOException {
 		this.saveSection3D.save(entry);
 	}
 
@@ -69,7 +69,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This should NOT be accessed from multiple threads
 	 */
-	public void save2d(Entry<RegionLocation2D, EntryLocation2D> entry) {
+	public void save2d(Entry<RegionLocation2D, EntryLocation2D> entry) throws IOException {
 		this.saveSection2D.save(entry);
 	}
 
@@ -91,31 +91,10 @@ public class SaveCubeColumns {
 		return saveSection2D.load(location);
 	}
 
-	public Optional<IOWriteTask> nextIO() {
-		Optional<IOWriteTask> task2d = saveSection2D.nextIO();
-		Optional<IOWriteTask> task3d = saveSection3D.nextIO();
-		if (!task2d.isPresent() && !task3d.isPresent()) {
-			return Optional.empty();
-		}
-		return Optional.of(() -> {
-			if (task2d.isPresent()) {
-				task2d.get().write();
-			}
-			if (task3d.isPresent()) {
-				task3d.get().write();
-			}
-		});
-	}
-
-	public boolean hasNextIO() {
-		return saveSection3D.hasNextIO() || saveSection2D.hasNextIO();
-	}
-
 	/**
 	 * @param location location for the save
-	 * @param runnableToNotify this runnable will be called whenever there is something to write
 	 */
-	public static SaveCubeColumns create(File location, Runnable runnableToNotify) throws IOException {
+	public static SaveCubeColumns create(File location) throws IOException {
 		final int sectorSize = 512;
 		final int maxSectorsLoaded = 256;
 
@@ -134,8 +113,8 @@ public class SaveCubeColumns {
 		RegionCache<RegionLocation3D, EntryLocation3D> regionCache3d = new RegionCache<RegionLocation3D, EntryLocation3D>(
 			regionFactoryIn(part3d, EntryLocation3D.ENTRIES_PER_REGION, sectorSize), maxSectorsLoaded);
 
-		SaveSection<RegionLocation2D, EntryLocation2D> section2d = new SaveSection<>(regionCache2d, runnableToNotify);
-		SaveSection<RegionLocation3D, EntryLocation3D> section3d = new SaveSection<>(regionCache3d, runnableToNotify);
+		SaveSection<RegionLocation2D, EntryLocation2D> section2d = new SaveSection<>(regionCache2d);
+		SaveSection<RegionLocation3D, EntryLocation3D> section3d = new SaveSection<>(regionCache3d);
 
 		return new SaveCubeColumns(section2d, section3d);
 	}
