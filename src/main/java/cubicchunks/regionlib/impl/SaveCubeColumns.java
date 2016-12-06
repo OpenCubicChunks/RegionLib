@@ -26,6 +26,7 @@ package cubicchunks.regionlib.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
@@ -58,7 +59,7 @@ public class SaveCubeColumns {
 	/**
 	 * Schedules entry for writing
 	 * <p>
-	 * This should NOT be accessed from multiple threads
+	 * This can be accessed from multiple threads. (thread safe)
 	 */
 	public void save3d(Entry<RegionLocation3D, EntryLocation3D> entry) throws IOException {
 		this.saveSection3D.save(entry);
@@ -67,7 +68,7 @@ public class SaveCubeColumns {
 	/**
 	 * Schedules entry for writing
 	 * <p>
-	 * This should NOT be accessed from multiple threads
+	 * This can be accessed from multiple threads. (thread safe)
 	 */
 	public void save2d(Entry<RegionLocation2D, EntryLocation2D> entry) throws IOException {
 		this.saveSection2D.save(entry);
@@ -76,7 +77,7 @@ public class SaveCubeColumns {
 	/**
 	 * Reads entry at given location.
 	 * <p>
-	 * This can be accessed from multiple threads.
+	 * This can be accessed from multiple threads. (thread safe)
 	 */
 	public Optional<Entry<RegionLocation3D, EntryLocation3D>> load(EntryLocation3D location) throws IOException, CurruptedDataException {
 		return saveSection3D.load(location);
