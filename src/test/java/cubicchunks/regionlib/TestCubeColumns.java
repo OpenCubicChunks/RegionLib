@@ -27,14 +27,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
 import cubicchunks.regionlib.impl.EntryLocation3D;
-import cubicchunks.regionlib.impl.RegionLocation3D;
 import cubicchunks.regionlib.impl.SaveCubeColumns;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -45,8 +44,8 @@ public class TestCubeColumns {
 	public TemporaryFolder folder = new TemporaryFolder();
 
 	@Test public void testSimpleWriteRead() throws IOException, CurruptedDataException {
-		File file = folder.newFolder("save");
-		SaveCubeColumns save = SaveCubeColumns.create(file);
+		Path path = folder.newFolder("save").toPath();
+		SaveCubeColumns save = SaveCubeColumns.create(path);
 		byte[] savedData = getData();
 		save.save3d(new EntryLocation3D(0, 0, 0), savedData);
 
@@ -59,8 +58,8 @@ public class TestCubeColumns {
 
 		// writes 1000 random byte arrays, each time reading all previously written arrays to confirm they are the same
 		// also measures time it took and amount of read/written bytes
-		File file = folder.newFolder("save");
-		SaveCubeColumns save = SaveCubeColumns.create(file);
+		Path path = folder.newFolder("save").toPath();
+		SaveCubeColumns save = SaveCubeColumns.create(path);
 
 		Random rnd = new Random(42);
 		byte[][] dataArray = new byte[1000][];
