@@ -46,13 +46,9 @@ public class TestCubeColumns {
 
 	@Test public void testSimpleWriteRead() throws IOException, CurruptedDataException {
 		File file = folder.newFolder("save");
-		SaveCubeColumns save = SaveCubeColumns.create(file, () -> {});
+		SaveCubeColumns save = SaveCubeColumns.create(file);
 		byte[] data = getData();
 		save.save3d(new Entry<>(new EntryLocation3D(0, 0, 0), data));
-
-		while (save.hasNextIO()) {
-			save.nextIO().get().write();
-		}
 
 		Entry<RegionLocation3D, EntryLocation3D> entry = save.load(new EntryLocation3D(0, 0, 0)).get();
 		assertArrayEquals(data, entry.getData());
@@ -64,7 +60,7 @@ public class TestCubeColumns {
 		// writes 1000 random byte arrays, each time reading all previously written arrays to confirm they are the same
 		// also measures time it took and amount of read/written bytes
 		File file = folder.newFolder("save");
-		SaveCubeColumns save = SaveCubeColumns.create(file, () -> {});
+		SaveCubeColumns save = SaveCubeColumns.create(file);
 
 		Random rnd = new Random(42);
 		byte[][] dataArray = new byte[1000][];
@@ -91,9 +87,6 @@ public class TestCubeColumns {
 			entryLocations[i] = loc;
 			save.save3d(new Entry<>(entryLocations[i], data));
 
-			while (save.hasNextIO()) {
-				save.nextIO().get().write();
-			}
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {
 					continue;
@@ -108,15 +101,8 @@ public class TestCubeColumns {
 					throw new RuntimeException(ex);
 				}
 				totalRead += entry.getData().length;
-				byte[] d1 = dataArray[readI];
-				byte[] d2 = entry.getData();
-				for (int k = 0; k < d1.length; k++) {
-					if (d1[k] != d2[k]) {
-						throw new Error();
-					}
-				}
 
-				//assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI], entry.getData());
+				assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI], entry.getData());
 			}
 
 		}
