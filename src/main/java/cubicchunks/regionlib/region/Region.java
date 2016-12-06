@@ -25,26 +25,36 @@ package cubicchunks.regionlib.region;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
 import cubicchunks.regionlib.IEntryLocation;
 
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
+
 public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements Closeable {
 
-	private static final int PRE_DATA_SIZE = 4;
+	private static final int PRE_DATA_SIZE = Integer.BYTES;
 	private static final boolean FORCE_WRITE_LOCATIONS = true;
 
-	private final RandomAccessFile file;
+	private ByteBuffer preDataBuffer = ByteBuffer.allocate(PRE_DATA_SIZE);
+	private ByteBuffer sectorLocationBuffer = preDataBuffer; // currently they are the same size, so just reuse it
+
+	private final SeekableByteChannel file;
 	private final int sectorSize;
 	private final BitSet usedSectors;
 
 	private int[] entrySectorOffsets;
 
-	public Region(RandomAccessFile file, int entriesPerRegion, int sectorSize) throws IOException {
-		this.file = file;
+	public Region(Path path, int entriesPerRegion, int sectorSize) throws IOException {
+		this.file = Files.newByteChannel(path, CREATE, READ, WRITE);
 		this.sectorSize = sectorSize;
 		this.usedSectors = new BitSet(32);
 		this.entrySectorOffsets = new int[entriesPerRegion];
@@ -55,14 +65,15 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 			this.usedSectors.set(i, true);
 		}
 
-		for (long i = file.length(); i <= entryMappingBytes; i++) {
-			file.writeByte(0);
+		if(file.size() < entryMappingBytes){
+			file.write(ByteBuffer.allocate((int) (entryMappingBytes - file.size())));
 		}
-		file.seek(0);
+		file.position(0);
 
-		for (int i = 0; i < entriesPerRegion; i++) {
-			entrySectorOffsets[i] = file.readInt();
-		}
+		ByteBuffer buffer = ByteBuffer.allocate(entryMappingBytes);
+		file.read(buffer);
+		buffer.flip();
+		buffer.asIntBuffer().get(entrySectorOffsets);
 	}
 
 	public synchronized void writeEntry(L location, byte[] data) throws IOException {
@@ -70,9 +81,13 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		int sectorLocation = findSectorFor(data.length, oldSectorLocation);
 
 		int bytesOffset = unpackOffset(sectorLocation)*sectorSize;
-		file.seek(bytesOffset);
-		file.writeInt(data.length);
-		file.write(data);
+
+		preDataBuffer.clear();
+		preDataBuffer.putInt(0, data.length);
+		file.position(bytesOffset).write(preDataBuffer);
+
+		file.write(ByteBuffer.wrap(data));
+
 		writeSectorLocationFor(location, sectorLocation);
 		updateUsedSectorsFor(oldSectorLocation, sectorLocation);
 	}
@@ -101,16 +116,18 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 
 		int sectorOffset = unpackOffset(sectorLocation);
-		int sizeSectors = unpackSize(sectorLocation);
+		int sectorCount = unpackSize(sectorLocation);
 
-		file.seek(sectorOffset*sectorSize);
-		int dataLength = file.readInt();
-		if (dataLength > sizeSectors*sectorSize) {
-			throw new CurruptedDataException("Expected data size max" + sizeSectors*sectorSize + " but found " + dataLength);
+		preDataBuffer.clear();
+		file.position(sectorOffset*sectorSize).read(preDataBuffer);
+		int dataLength = preDataBuffer.getInt(0);
+		if (dataLength > sectorCount*sectorSize) {
+			throw new CurruptedDataException("Expected data size max" + sectorCount*sectorSize + " but found " + dataLength);
 		}
-		byte[] bytes = new byte[dataLength];
-		file.readFully(bytes);
-		return Optional.of(bytes);
+
+		ByteBuffer bytes = ByteBuffer.allocate(dataLength);
+		file.read(bytes);
+		return Optional.of(bytes.array());
 	}
 
 	private int findSectorFor(int length, int oldSectorLocation) {
@@ -168,8 +185,9 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		int entryId = location.getId();
 		this.entrySectorOffsets[entryId] = sectorLocation;
 		if (FORCE_WRITE_LOCATIONS) {
-			file.seek(entryId*Integer.BYTES);
-			file.writeInt(sectorLocation);
+			sectorLocationBuffer.clear();
+			sectorLocationBuffer.putInt(0, sectorLocation);
+			file.position(entryId*Integer.BYTES).write(sectorLocationBuffer);
 		}
 	}
 

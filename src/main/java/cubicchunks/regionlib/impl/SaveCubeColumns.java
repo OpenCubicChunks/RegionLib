@@ -127,9 +127,8 @@ public class SaveCubeColumns {
 			if (!regionFile.exists()) {
 				regionFile.createNewFile();
 			}
-			RandomAccessFile raf = new RandomAccessFile(regionFile, "rw");
 
-			return Optional.of(new Region<>(raf, entriesPerRegion, sectorSize));
+			return Optional.of(new Region<>(regionFile.toPath(), entriesPerRegion, sectorSize));
 		};
 	}
 }
