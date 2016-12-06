@@ -38,11 +38,12 @@ public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocati
 		this.regionCache = regionCache;
 	}
 
-	public void save(Entry<R, L> entry) throws IOException{
-		this.regionCache.getRegion(entry.getLocation().getRegionLocation()).writeEntry(entry);
+	public void save(L location, byte[] data) throws IOException{
+		this.regionCache.getRegion(location.getRegionLocation())
+			.writeEntry(location, data);
 	}
 
-	public Optional<Entry<R, L>> load(L location) throws IOException, CurruptedDataException {
+	public Optional<byte[]> load(L location) throws IOException, CurruptedDataException {
 		Optional<Region<R, L>> region = this.regionCache.getRegionIfExists(location.getRegionLocation());
 		if (region.isPresent()) {
 			return region.get().readEntry(location);

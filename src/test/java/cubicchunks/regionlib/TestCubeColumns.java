@@ -47,11 +47,11 @@ public class TestCubeColumns {
 	@Test public void testSimpleWriteRead() throws IOException, CurruptedDataException {
 		File file = folder.newFolder("save");
 		SaveCubeColumns save = SaveCubeColumns.create(file);
-		byte[] data = getData();
-		save.save3d(new Entry<>(new EntryLocation3D(0, 0, 0), data));
+		byte[] savedData = getData();
+		save.save3d(new EntryLocation3D(0, 0, 0), savedData);
 
-		Entry<RegionLocation3D, EntryLocation3D> entry = save.load(new EntryLocation3D(0, 0, 0)).get();
-		assertArrayEquals(data, entry.getData());
+		byte[] loadedData = save.load(new EntryLocation3D(0, 0, 0)).get();
+		assertArrayEquals(savedData, loadedData);
 	}
 
 	@Test public void testMultipleInterleavedReadWrites() throws IOException, CurruptedDataException {
@@ -85,24 +85,24 @@ public class TestCubeColumns {
 			previousWrites.put(loc, i);
 			dataArray[i] = data;
 			entryLocations[i] = loc;
-			save.save3d(new Entry<>(entryLocations[i], data));
+			save.save3d(entryLocations[i], data);
 
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {
 					continue;
 				}
-				Entry<RegionLocation3D, EntryLocation3D> entry;
+				byte[] loaded;
 				String msg = "Reading array " + readI + " loc=" + entryLocations[readI] + " after writing " + i + " loc=" + entryLocations[i];
 				try {
-					entry = save.load(entryLocations[readI]).get();
+					loaded = save.load(entryLocations[readI]).get();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 					fail(msg + " ex=" + ex);
 					throw new RuntimeException(ex);
 				}
-				totalRead += entry.getData().length;
+				totalRead += loaded.length;
 
-				assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI], entry.getData());
+				assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI], loaded);
 			}
 
 		}

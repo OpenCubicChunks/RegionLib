@@ -30,7 +30,6 @@ import java.util.BitSet;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
-import cubicchunks.regionlib.Entry;
 import cubicchunks.regionlib.IEntryLocation;
 
 public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements Closeable {
@@ -66,17 +65,15 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	public synchronized void writeEntry(Entry<R, L> entry) throws IOException {
-		byte[] data = entry.getData();
-
-		int oldSectorLocation = getExistingSectorLocationFor(entry.getLocation());
-		int sectorLocation = findSectorFor(entry, oldSectorLocation);
+	public synchronized void writeEntry(L location, byte[] data) throws IOException {
+		int oldSectorLocation = getExistingSectorLocationFor(location);
+		int sectorLocation = findSectorFor(data.length, oldSectorLocation);
 
 		int bytesOffset = unpackOffset(sectorLocation)*sectorSize;
 		file.seek(bytesOffset);
 		file.writeInt(data.length);
 		file.write(data);
-		writeSectorLocationFor(entry, sectorLocation);
+		writeSectorLocationFor(location, sectorLocation);
 		updateUsedSectorsFor(oldSectorLocation, sectorLocation);
 	}
 
@@ -96,7 +93,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	public synchronized Optional<Entry<R, L>> readEntry(L location) throws IOException, CurruptedDataException {
+	public synchronized Optional<byte[]> readEntry(L location) throws IOException, CurruptedDataException {
 		int sectorLocation = getExistingSectorLocationFor(location);
 
 		if (sectorLocation == 0) {
@@ -113,11 +110,11 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 		byte[] bytes = new byte[dataLength];
 		file.readFully(bytes);
-		return Optional.of(new Entry<>(location, bytes));
+		return Optional.of(bytes);
 	}
 
-	private int findSectorFor(Entry<R, L> entry, int oldSectorLocation) {
-		int entryBytes = entry.getData().length + PRE_DATA_SIZE;
+	private int findSectorFor(int length, int oldSectorLocation) {
+		int entryBytes = length + PRE_DATA_SIZE;
 		int oldSectorSize = unpackSize(oldSectorLocation);
 		int newSectorSize = getSectorSize(entryBytes);
 
@@ -167,8 +164,8 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		return this.entrySectorOffsets[location.getId()];
 	}
 
-	private void writeSectorLocationFor(Entry<R, L> entry, int sectorLocation) throws IOException {
-		int entryId = entry.getLocation().getId();
+	private void writeSectorLocationFor(L location, int sectorLocation) throws IOException {
+		int entryId = location.getId();
 		this.entrySectorOffsets[entryId] = sectorLocation;
 		if (FORCE_WRITE_LOCATIONS) {
 			file.seek(entryId*Integer.BYTES);

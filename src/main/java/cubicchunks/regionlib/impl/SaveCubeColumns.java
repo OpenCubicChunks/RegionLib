@@ -26,11 +26,9 @@ package cubicchunks.regionlib.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
-import cubicchunks.regionlib.Entry;
 import cubicchunks.regionlib.IEntryLocation;
 import cubicchunks.regionlib.IOWriteTask;
 import cubicchunks.regionlib.SaveSection;
@@ -61,8 +59,8 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save3d(Entry<RegionLocation3D, EntryLocation3D> entry) throws IOException {
-		this.saveSection3D.save(entry);
+	public void save3d(EntryLocation3D location, byte[] data) throws IOException {
+		this.saveSection3D.save(location, data);
 	}
 
 	/**
@@ -70,8 +68,8 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save2d(Entry<RegionLocation2D, EntryLocation2D> entry) throws IOException {
-		this.saveSection2D.save(entry);
+	public void save2d(EntryLocation2D location, byte[] data) throws IOException {
+		this.saveSection2D.save(location, data);
 	}
 
 	/**
@@ -79,7 +77,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public Optional<Entry<RegionLocation3D, EntryLocation3D>> load(EntryLocation3D location) throws IOException, CurruptedDataException {
+	public Optional<byte[]> load(EntryLocation3D location) throws IOException, CurruptedDataException {
 		return saveSection3D.load(location);
 	}
 
@@ -88,7 +86,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads.
 	 */
-	public Optional<Entry<RegionLocation2D, EntryLocation2D>> load(EntryLocation2D location) throws IOException, CurruptedDataException {
+	public Optional<byte[]> load(EntryLocation2D location) throws IOException, CurruptedDataException {
 		return saveSection2D.load(location);
 	}
 
