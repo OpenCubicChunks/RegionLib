@@ -7,7 +7,7 @@ jdk:
 
 before_install:
   # workaround to get "git describe" working
-  - git fetch --unshallow --tags
+  - git fetch --unshallow --tags || true
   - git describe
 script: ./gradlew build
 
