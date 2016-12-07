@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +37,7 @@ import java.util.Random;
 import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.impl.SaveCubeColumns;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class TestCubeColumns {
@@ -46,11 +47,14 @@ public class TestCubeColumns {
 	@Test public void testSimpleWriteRead() throws IOException, CurruptedDataException {
 		Path path = folder.newFolder("save").toPath();
 		SaveCubeColumns save = SaveCubeColumns.create(path);
-		byte[] savedData = getData();
-		save.save3d(new EntryLocation3D(0, 0, 0), savedData);
+		ByteBuffer savedData = getData();
 
-		byte[] loadedData = save.load(new EntryLocation3D(0, 0, 0)).get();
-		assertArrayEquals(savedData, loadedData);
+		save.save3d(new EntryLocation3D(0, 0, 0), savedData);
+		ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0)).get();
+
+		savedData.rewind();
+		assertEquals(savedData, loadedData);
+		savedData.equals(loadedData);
 	}
 
 	@Test public void testMultipleInterleavedReadWrites() throws IOException, CurruptedDataException {
@@ -62,12 +66,12 @@ public class TestCubeColumns {
 		SaveCubeColumns save = SaveCubeColumns.create(path);
 
 		Random rnd = new Random(42);
-		byte[][] dataArray = new byte[1000][];
+		ByteBuffer[] dataArray = new ByteBuffer[1000];
 		long totalBytes = 0;
 		long totalRead = 0;
 		for (int i = 0; i < dataArray.length; i++) {
 			dataArray[i] = getData(rnd);
-			totalBytes += dataArray[i].length;
+			totalBytes += dataArray[i].remaining();
 		}
 		System.out.println("START");
 		long time = -System.nanoTime();
@@ -76,21 +80,21 @@ public class TestCubeColumns {
 		Map<EntryLocation3D, Integer> previousWrites = new HashMap<>();
 
 		for (int i = 0; i < dataArray.length; i++) {
-			byte[] data = dataArray[i];
+			ByteBuffer data = dataArray[i];
 			EntryLocation3D loc = new EntryLocation3D(rnd.nextInt(5), rnd.nextInt(5), rnd.nextInt(5));
 			if (previousWrites.containsKey(loc)) {
 				dataArray[previousWrites.get(loc)] = null;
 			}
 			previousWrites.put(loc, i);
-			dataArray[i] = data;
 			entryLocations[i] = loc;
 			save.save3d(entryLocations[i], data);
+			data.rewind();
 
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {
 					continue;
 				}
-				byte[] loaded;
+				ByteBuffer loaded;
 				String msg = "Reading array " + readI + " loc=" + entryLocations[readI] + " after writing " + i + " loc=" + entryLocations[i];
 				try {
 					loaded = save.load(entryLocations[readI]).get();
@@ -99,9 +103,9 @@ public class TestCubeColumns {
 					fail(msg + " ex=" + ex);
 					throw new RuntimeException(ex);
 				}
-				totalRead += loaded.length;
+				totalRead += loaded.remaining();
 
-				assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI], loaded);
+				assertEquals("Reading array " + readI + " after writing " + i, dataArray[readI], loaded);
 			}
 
 		}
@@ -110,14 +114,14 @@ public class TestCubeColumns {
 		System.out.println("Read total " + totalRead + " bytes");
 	}
 
-	private byte[] getData(Random rnd) {
+	private ByteBuffer getData(Random rnd) {
 		int size = rnd.nextInt(2000);
 		byte[] arr = new byte[size];
 		rnd.nextBytes(arr);
-		return arr;
+		return ByteBuffer.wrap(arr);
 	}
 
-	public byte[] getData() {
-		return new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	public ByteBuffer getData() {
+		return ByteBuffer.wrap(new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 	}
 }

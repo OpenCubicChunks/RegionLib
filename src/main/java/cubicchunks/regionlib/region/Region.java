@@ -76,17 +76,17 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		buffer.asIntBuffer().get(entrySectorOffsets);
 	}
 
-	public synchronized void writeEntry(L location, byte[] data) throws IOException {
+	public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
 		int oldSectorLocation = getExistingSectorLocationFor(location);
-		int sectorLocation = findSectorFor(data.length, oldSectorLocation);
+		int sectorLocation = findSectorFor(data.remaining(), oldSectorLocation);
 
 		int bytesOffset = unpackOffset(sectorLocation)*sectorSize;
 
 		preDataBuffer.clear();
-		preDataBuffer.putInt(0, data.length);
+		preDataBuffer.putInt(0, data.remaining());
 		file.position(bytesOffset).write(preDataBuffer);
 
-		file.write(ByteBuffer.wrap(data));
+		file.write(data);
 
 		writeSectorLocationFor(location, sectorLocation);
 		updateUsedSectorsFor(oldSectorLocation, sectorLocation);
@@ -108,7 +108,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	public synchronized Optional<byte[]> readEntry(L location) throws IOException, CurruptedDataException {
+	public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException {
 		int sectorLocation = getExistingSectorLocationFor(location);
 
 		if (sectorLocation == 0) {
@@ -127,7 +127,8 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 
 		ByteBuffer bytes = ByteBuffer.allocate(dataLength);
 		file.read(bytes);
-		return Optional.of(bytes.array());
+		bytes.flip();
+		return Optional.of(bytes);
 	}
 
 	private int findSectorFor(int length, int oldSectorLocation) {

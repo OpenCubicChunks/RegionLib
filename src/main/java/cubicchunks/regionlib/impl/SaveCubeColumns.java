@@ -24,6 +24,7 @@
 package cubicchunks.regionlib.impl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -59,7 +60,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save3d(EntryLocation3D location, byte[] data) throws IOException {
+	public void save3d(EntryLocation3D location, ByteBuffer data) throws IOException {
 		this.saveSection3D.save(location, data);
 	}
 
@@ -68,7 +69,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save2d(EntryLocation2D location, byte[] data) throws IOException {
+	public void save2d(EntryLocation2D location, ByteBuffer data) throws IOException {
 		this.saveSection2D.save(location, data);
 	}
 
@@ -77,7 +78,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public Optional<byte[]> load(EntryLocation3D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException, CurruptedDataException {
 		return saveSection3D.load(location);
 	}
 
@@ -86,7 +87,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads.
 	 */
-	public Optional<byte[]> load(EntryLocation2D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException, CurruptedDataException {
 		return saveSection2D.load(location);
 	}
 
