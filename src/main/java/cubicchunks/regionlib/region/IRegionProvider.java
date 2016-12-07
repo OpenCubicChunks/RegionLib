@@ -29,8 +29,29 @@ import java.util.Optional;
 import cubicchunks.regionlib.IEntryLocation;
 import cubicchunks.regionlib.IRegionLocation;
 
+/**
+ * Acts as a source of regions (creation/loading/caching)
+ *
+ * @param <R> The IRegionLocation type
+ * @param <L> The IEntryLocation type
+ */
 public interface IRegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+
+	/**
+	 * Gets an IRegion at a given IRegionLocation, or create one if it does not exist
+	 *
+	 * @param location The key for the IRegion
+	 * @return The IRegion at {@code location}
+	 * @throws IOException
+	 */
 	IRegion<R, L> getRegion(R location) throws IOException;
 
+	/**
+	 * Gets an IRegion at a given IRegionLocation
+	 *
+	 * @param location The key for the IRegion
+	 * @return An Optional containing the IRegion at {@code location} if it exists
+	 * @throws IOException
+	 */
 	Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException;
 }

@@ -44,7 +44,7 @@ public class TestCubeColumns {
 	@Rule
 	public TemporaryFolder folder = new TemporaryFolder();
 
-	@Test public void testSimpleWriteRead() throws IOException, CurruptedDataException {
+	@Test public void testSimpleWriteRead() throws IOException {
 		Path path = folder.newFolder("save").toPath();
 		SaveCubeColumns save = SaveCubeColumns.create(path);
 		ByteBuffer savedData = getData();
@@ -57,7 +57,7 @@ public class TestCubeColumns {
 		savedData.equals(loadedData);
 	}
 
-	@Test public void testMultipleInterleavedReadWrites() throws IOException, CurruptedDataException {
+	@Test public void testMultipleInterleavedReadWrites() throws IOException {
 		// TODO: make this test code easier to understand
 
 		// writes 1000 random byte arrays, each time reading all previously written arrays to confirm they are the same

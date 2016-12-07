@@ -34,6 +34,12 @@ import java.util.Optional;
 import cubicchunks.regionlib.IEntryLocation;
 import cubicchunks.regionlib.IRegionLocation;
 
+/**
+ * An implementation of IRegionProvider that caches opened Regions
+ *
+ * @param <R> The IRegionLocation type
+ * @param <L> The IEntryLocation type
+ */
 public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegionProvider<R, L> {
 
 	private final Map<R, IRegion<R, L>> regionLocationToRegion;
@@ -42,10 +48,23 @@ public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLoc
 	private final int sectorSize;
 	private final int maxSize;
 
+	/**
+	 * Creates a RegionProvider with default settings using the given {@code directory}
+	 *
+	 * @param directory The directory that region files are stored in
+	 */
 	public RegionProvider(Path directory) {
 		this(directory, 512, 126);
 	}
 
+	/**
+	 * Creates a RegionProvider with custom sector size and custom max cache size
+	 * using the given {@code directory}
+	 *
+	 * @param directory The directory that region files are stored in
+	 * @param sectorSize The sector size used in the region files
+	 * @param maxSize The maximum number of cached region files
+	 */
 	public RegionProvider(Path directory, int sectorSize, int maxSize) {
 		this.regionLocationToRegion = new HashMap<>(maxSize*2); // methods below are synchronized anyway, no need for concurrent map
 		this.directory = directory;
@@ -53,12 +72,12 @@ public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLoc
 		this.maxSize = maxSize;
 	}
 
-	@Override public synchronized IRegion<R, L> getRegion(R location) throws IOException {
+	public synchronized IRegion<R, L> getRegion(R location) throws IOException {
 		return getRegion(location, true); // it can't be null here
 	}
 
-	@Override public synchronized Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException {
-		return Optional.of(getRegion(location, false));
+	public synchronized Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException {
+		return Optional.ofNullable(getRegion(location, false));
 	}
 
 	private synchronized IRegion<R, L> getRegion(R location, boolean canCreate) throws IOException {

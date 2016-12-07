@@ -25,6 +25,9 @@ package cubicchunks.regionlib.impl;
 
 import cubicchunks.regionlib.IRegionLocation;
 
+/**
+ * A 3D implementation of IRegionLocation
+ */
 public class RegionLocation3D implements IRegionLocation<RegionLocation3D, EntryLocation3D> {
 	private final int x;
 	private final int y;
