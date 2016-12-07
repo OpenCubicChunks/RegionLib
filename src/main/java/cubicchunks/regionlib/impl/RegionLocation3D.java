@@ -29,14 +29,11 @@ public class RegionLocation3D implements IRegionLocation<RegionLocation3D, Entry
 	private final int x;
 	private final int y;
 	private final int z;
-	private final String name;
 
 	public RegionLocation3D(int x, int y, int z) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
-
-		this.name = x + "." + y + "." + z + ".3dr";
 	}
 
 	public int getX() {
@@ -52,7 +49,11 @@ public class RegionLocation3D implements IRegionLocation<RegionLocation3D, Entry
 	}
 
 	@Override public String getRegionName() {
-		return name;
+		return x + "." + y + "." + z + ".3dr";
+	}
+
+	@Override public int getEntryCount() {
+		return EntryLocation3D.ENTRIES_PER_REGION;
 	}
 
 	@Override public boolean equals(Object o) {
@@ -76,7 +77,7 @@ public class RegionLocation3D implements IRegionLocation<RegionLocation3D, Entry
 
 	@Override public String toString() {
 		return "RegionLocation3D{" +
-			"name='" + name + '\'' +
+			"name='" + getRegionName() + '\'' +
 			'}';
 	}
 }

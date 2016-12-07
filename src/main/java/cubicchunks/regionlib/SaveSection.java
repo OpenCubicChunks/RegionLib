@@ -25,6 +25,7 @@ package cubicchunks.regionlib;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.Optional;
 
 import cubicchunks.regionlib.region.IRegionLocation;
@@ -34,6 +35,10 @@ import cubicchunks.regionlib.region.RegionCache;
 public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
 
 	private final RegionCache<R, L> regionCache;
+
+	public SaveSection(Path directory) {
+		this.regionCache = new RegionCache<>(directory);
+	}
 
 	public SaveSection(RegionCache<R, L> regionCache) {
 		this.regionCache = regionCache;

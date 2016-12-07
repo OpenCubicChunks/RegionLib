@@ -27,4 +27,6 @@ import cubicchunks.regionlib.IEntryLocation;
 
 public interface IRegionLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
 	String getRegionName();
+
+	int getEntryCount();
 }
