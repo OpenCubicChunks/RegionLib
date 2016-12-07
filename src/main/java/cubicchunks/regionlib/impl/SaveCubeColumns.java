@@ -23,9 +23,10 @@
  */
 package cubicchunks.regionlib.impl;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
@@ -59,7 +60,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save3d(EntryLocation3D location, byte[] data) throws IOException {
+	public void save3d(EntryLocation3D location, ByteBuffer data) throws IOException {
 		this.saveSection3D.save(location, data);
 	}
 
@@ -68,7 +69,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public void save2d(EntryLocation2D location, byte[] data) throws IOException {
+	public void save2d(EntryLocation2D location, ByteBuffer data) throws IOException {
 		this.saveSection2D.save(location, data);
 	}
 
@@ -77,7 +78,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public Optional<byte[]> load(EntryLocation3D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException, CurruptedDataException {
 		return saveSection3D.load(location);
 	}
 
@@ -86,31 +87,31 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads.
 	 */
-	public Optional<byte[]> load(EntryLocation2D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException, CurruptedDataException {
 		return saveSection2D.load(location);
 	}
 
 	/**
-	 * @param location location for the save
+	 * @param directory directory for the save
 	 */
-	public static SaveCubeColumns create(File location) throws IOException {
+	public static SaveCubeColumns create(Path directory) throws IOException {
 		final int sectorSize = 512;
-		final int maxSectorsLoaded = 256;
+		final int maxRegionsLoaded = 256;
 
-		FileUtils.createDirectory(location);
+		Files.createDirectories(directory);
 
-		File part2d = new File(location, "region2d");
-		FileUtils.createDirectory(part2d);
+		Path part2d = directory.resolve("region2d");
+		Files.createDirectory(part2d);
 
 		// diamond operator won't work here with javac for some strange reason, even if IDEA thinks it's ok
 		RegionCache<RegionLocation2D, EntryLocation2D> regionCache2d = new RegionCache<RegionLocation2D, EntryLocation2D>(
-			regionFactoryIn(part2d, EntryLocation2D.ENTRIES_PER_REGION, sectorSize), maxSectorsLoaded);
+			regionFactoryIn(part2d, EntryLocation2D.ENTRIES_PER_REGION, sectorSize), maxRegionsLoaded);
 
-		File part3d = new File(location, "region3d");
-		FileUtils.createDirectory(part3d);
+		Path part3d = directory.resolve("region3d");
+		Files.createDirectory(part3d);
 
 		RegionCache<RegionLocation3D, EntryLocation3D> regionCache3d = new RegionCache<RegionLocation3D, EntryLocation3D>(
-			regionFactoryIn(part3d, EntryLocation3D.ENTRIES_PER_REGION, sectorSize), maxSectorsLoaded);
+			regionFactoryIn(part3d, EntryLocation3D.ENTRIES_PER_REGION, sectorSize), maxRegionsLoaded);
 
 		SaveSection<RegionLocation2D, EntryLocation2D> section2d = new SaveSection<>(regionCache2d);
 		SaveSection<RegionLocation3D, EntryLocation3D> section3d = new SaveSection<>(regionCache3d);
@@ -118,18 +119,15 @@ public class SaveCubeColumns {
 		return new SaveCubeColumns(section2d, section3d);
 	}
 
-	private static <R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> RegionFactory<R, L> regionFactoryIn(File directory, int entriesPerRegion, int sectorSize) {
+	private static <R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> RegionFactory<R, L> regionFactoryIn(Path directory, int entriesPerRegion, int sectorSize) {
 		return (l, t) -> {
-			File regionFile = new File(directory, l.getRegionName());
-			if (t == RegionFactory.CreateType.LOAD && !regionFile.exists()) {
+			Path regionPath = directory.resolve(l.getRegionName());
+
+			if (t == RegionFactory.CreateType.LOAD && !Files.exists(regionPath)) {
 				return Optional.empty();
 			}
-			if (!regionFile.exists()) {
-				regionFile.createNewFile();
-			}
-			RandomAccessFile raf = new RandomAccessFile(regionFile, "rw");
 
-			return Optional.of(new Region<>(raf, entriesPerRegion, sectorSize));
+			return Optional.of(new Region<>(regionPath, entriesPerRegion, sectorSize));
 		};
 	}
 }

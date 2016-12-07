@@ -24,6 +24,7 @@
 package cubicchunks.regionlib;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import cubicchunks.regionlib.region.IRegionLocation;
@@ -38,12 +39,12 @@ public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocati
 		this.regionCache = regionCache;
 	}
 
-	public void save(L location, byte[] data) throws IOException{
+	public void save(L location, ByteBuffer data) throws IOException{
 		this.regionCache.getRegion(location.getRegionLocation())
 			.writeEntry(location, data);
 	}
 
-	public Optional<byte[]> load(L location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(L location) throws IOException, CurruptedDataException {
 		Optional<Region<R, L>> region = this.regionCache.getRegionIfExists(location.getRegionLocation());
 		if (region.isPresent()) {
 			return region.get().readEntry(location);
