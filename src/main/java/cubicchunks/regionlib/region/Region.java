@@ -32,8 +32,8 @@ import java.util.BitSet;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CorruptedDataException;
-import cubicchunks.regionlib.IEntryLocation;
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
@@ -42,10 +42,10 @@ import static java.nio.file.StandardOpenOption.WRITE;
 /**
  * A basic region implementation
  *
- * @param <R> The IRegionLocation type
- * @param <L> The IEntryLocation type
+ * @param <R> The region key type
+ * @param <L> The key type
  */
-public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegion<R, L> {
+public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegion<R, L> {
 
 	private static final int PRE_DATA_SIZE = Integer.BYTES;
 	private static final boolean FORCE_WRITE_LOCATIONS = true;
@@ -94,19 +94,19 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	@Override public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
-		int oldSectorLocation = getExistingSectorLocationFor(location);
-		int sectorLocation = findSectorFor(data.remaining(), oldSectorLocation);
+	@Override public synchronized void writeValue(L key, ByteBuffer value) throws IOException {
+		int oldSectorLocation = getExistingSectorLocationFor(key);
+		int sectorLocation = findSectorFor(value.remaining(), oldSectorLocation);
 
 		int bytesOffset = unpackOffset(sectorLocation)*sectorSize;
 
 		preDataBuffer.clear();
-		preDataBuffer.putInt(0, data.remaining());
+		preDataBuffer.putInt(0, value.remaining());
 		file.position(bytesOffset).write(preDataBuffer);
 
-		file.write(data);
+		file.write(value);
 
-		writeSectorLocationFor(location, sectorLocation);
+		writeSectorLocationFor(key, sectorLocation);
 		updateUsedSectorsFor(oldSectorLocation, sectorLocation);
 	}
 
@@ -126,8 +126,8 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException {
-		int sectorLocation = getExistingSectorLocationFor(location);
+	@Override public synchronized Optional<ByteBuffer> readValue(L key) throws IOException {
+		int sectorLocation = getExistingSectorLocationFor(key);
 
 		if (sectorLocation == 0) {
 			return Optional.empty();

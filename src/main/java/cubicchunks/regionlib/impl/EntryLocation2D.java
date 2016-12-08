@@ -23,12 +23,12 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.IEntryLocation;
+import cubicchunks.regionlib.IKey;
 
 /**
  * A 2D implementation of IEntryLocation
  */
-public class EntryLocation2D implements IEntryLocation<RegionLocation2D, EntryLocation2D> {
+public class EntryLocation2D implements IKey<RegionLocation2D, EntryLocation2D> {
 	private static final int LOC_BITS = 5;
 	private static final int LOC_BITMASK = (1 << LOC_BITS) - 1;
 	public static final int ENTRIES_PER_REGION = (1 << LOC_BITS)*(1 << LOC_BITS);
@@ -66,7 +66,7 @@ public class EntryLocation2D implements IEntryLocation<RegionLocation2D, EntryLo
 		return result;
 	}
 
-	@Override public RegionLocation2D getRegionLocation() {
+	@Override public RegionLocation2D getRegionKey() {
 		return new RegionLocation2D(entryX >> LOC_BITS, entryZ >> LOC_BITS);
 	}
 

@@ -54,7 +54,7 @@ public class TestRegion {
 		folder.newFolder("save");
 		Path path = folder.newFile("save/test.3dr").toPath();
 		RegionLocation3D regionKey = new RegionLocation3D(0, 0, 0);
-		Region<RegionLocation3D, EntryLocation3D> save = new Region<>(path, regionKey.getEntryCount(), 512);
+		Region<RegionLocation3D, EntryLocation3D> save = new Region<>(path, regionKey.getKeyCount(), 512);
 
 		Random rnd = new Random(42);
 		ByteBuffer[] dataArray = new ByteBuffer[1000];
@@ -78,12 +78,12 @@ public class TestRegion {
 			}
 			previousWrites.put(loc, i);
 			entryLocations[i] = loc;
-			save.writeEntry(entryLocations[i], data);
+			save.writeValue(entryLocations[i], data);
 			data.rewind();
 
 			// re-open the Region
 			save.close();
-			save = new Region<>(path, regionKey.getEntryCount(), 512);
+			save = new Region<>(path, regionKey.getKeyCount(), 512);
 
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {
@@ -92,7 +92,7 @@ public class TestRegion {
 				ByteBuffer loaded;
 				String msg = "Reading array " + readI + " loc=" + entryLocations[readI] + " after writing " + i + " loc=" + entryLocations[i];
 				try {
-					loaded = save.readEntry(entryLocations[readI]).get();
+					loaded = save.readValue(entryLocations[readI]).get();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 					fail(msg + " ex=" + ex);

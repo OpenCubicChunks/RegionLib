@@ -30,10 +30,10 @@ package cubicchunks.regionlib;
  * @param <R> This type
  * @param <L> The key type used to locate values within this region
  */
-public interface IRegionLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+public interface IRegionKey<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 	/**
 	 * Gets the region's name.<br/>
-	 * The name must be unique per region location.<br/>
+	 * The name must be unique per region key.<br/>
 	 * The name will usually be used as a file name so don't use any special characters.
 	 *
 	 * @return This region's name
@@ -47,5 +47,5 @@ public interface IRegionLocation<R extends IRegionLocation<R, L>, L extends IEnt
 	 *
 	 * @return The number of keys in this region
 	 */
-	int getEntryCount();
+	int getKeyCount();
 }

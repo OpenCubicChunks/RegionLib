@@ -27,23 +27,23 @@ package cubicchunks.regionlib;
  * A key for locating a value.<br/>
  * This class should be immutable.
  *
- * @param <R> The IRegionLocation type associated this IEntryLocation
+ * @param <R> The region key type associated this key type
  * @param <L> This type
  */
-public interface IEntryLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+public interface IKey<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 	/**
 	 * Gets a region key associated with the region that contains this key's value
 	 *
-	 * @return A IRegionLocation of a region that contains this key's value
+	 * @return A region key for a region that should contain this key's value
 	 */
-	R getRegionLocation();
+	R getRegionKey();
 
 	/**
 	 * Gets the index of this key in the region associated with
-	 * {@link IEntryLocation#getRegionLocation()}'s region.<br/>
+	 * {@link IKey#getRegionKey()}'s region.<br/>
 	 *
 	 * The index must be grater than or equal to 0 AND less than
-	 * {@link IEntryLocation#getRegionLocation()}'s {@link IRegionLocation#getEntryCount()}.<br/>
+	 * {@link IKey#getRegionKey()}'s {@link IRegionKey#getKeyCount()}.<br/>
 	 *
 	 * The index must not overlap with another key's index within the region<br/>
 	 *

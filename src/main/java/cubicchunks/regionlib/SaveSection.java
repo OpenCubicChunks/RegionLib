@@ -40,7 +40,7 @@ import cubicchunks.regionlib.region.RegionProvider;
  * @param <R> The region key type
  * @param <L> The location key type
  */
-public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 
 	private final IRegionProvider<R, L> regionProvider;
 
@@ -66,29 +66,29 @@ public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocati
 	 * Saves/puts a value at a key<br/>
 	 * This method is thread safe.
 	 *
-	 * @param location The key
-	 * @param data The value to save
+	 * @param key The key
+	 * @param value The value to save
 	 * @throws IOException
 	 * @throws CorruptedDataException
 	 */
-	public void save(L location, ByteBuffer data) throws IOException {
-		this.regionProvider.getRegion(location.getRegionLocation())
-			.writeEntry(location, data);
+	public void save(L key, ByteBuffer value) throws IOException {
+		this.regionProvider.getRegion(key.getRegionKey())
+			.writeValue(key, value);
 	}
 
 	/**
 	 * Loads/gets a value at a key<br/>
 	 * This Method is thread safe.
 	 *
-	 * @param location The key
+	 * @param key The key
 	 * @return An Optional containing the value if it exists
 	 * @throws IOException
 	 * @throws CorruptedDataException
 	 */
-	public Optional<ByteBuffer> load(L location) throws IOException {
-		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(location.getRegionLocation());
+	public Optional<ByteBuffer> load(L key) throws IOException {
+		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
 		if (region.isPresent()) {
-			return region.get().readEntry(location);
+			return region.get().readValue(key);
 		}
 		return Optional.empty();
 	}

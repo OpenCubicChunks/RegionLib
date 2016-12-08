@@ -29,8 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CorruptedDataException;
-import cubicchunks.regionlib.IEntryLocation;
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
 
 /**
  * Stores all values within a fixed measure (area/volume/what ever) of keys.<br/>
@@ -39,25 +39,25 @@ import cubicchunks.regionlib.IRegionLocation;
  * @param <R> The IRegionLocation type
  * @param <L> The IEntryLocation type
  */
-public interface IRegion<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> extends Closeable {
+public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> extends Closeable {
 
 	/**
 	 * Stores a value at a key within this region
 	 *
-	 * @param location A key within this region
-	 * @param data The value to store
+	 * @param key A key within this region
+	 * @param value The value to store
 	 * @throws IOException
 	 * @throws CorruptedDataException
 	 */
-	void writeEntry(L location, ByteBuffer data) throws IOException;
+	void writeValue(L key, ByteBuffer value) throws IOException;
 
 	/**
 	 * Loads a value at a key if there was something stored there before, within this region
 	 *
-	 * @param location The key within this region
-	 * @return The value at {@code location} if it exists
+	 * @param key The key within this region
+	 * @return The value at {@code key} if it exists
 	 * @throws IOException
 	 * @throws CorruptedDataException
 	 */
-	Optional<ByteBuffer> readEntry(L location) throws IOException;
+	Optional<ByteBuffer> readValue(L key) throws IOException;
 }

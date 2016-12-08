@@ -23,12 +23,12 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IRegionKey;
 
 /**
  * A 3D implementation of IRegionLocation
  */
-public class RegionLocation3D implements IRegionLocation<RegionLocation3D, EntryLocation3D> {
+public class RegionLocation3D implements IRegionKey<RegionLocation3D, EntryLocation3D> {
 	private final int x;
 	private final int y;
 	private final int z;
@@ -55,7 +55,7 @@ public class RegionLocation3D implements IRegionLocation<RegionLocation3D, Entry
 		return x + "." + y + "." + z + ".3dr";
 	}
 
-	@Override public int getEntryCount() {
+	@Override public int getKeyCount() {
 		return EntryLocation3D.ENTRIES_PER_REGION;
 	}
 
