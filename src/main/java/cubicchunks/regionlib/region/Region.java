@@ -62,24 +62,36 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 	public Region(Path path, int entriesPerRegion, int sectorSize) throws IOException {
 		this.file = Files.newByteChannel(path, CREATE, READ, WRITE);
 		this.sectorSize = sectorSize;
-		this.usedSectors = new BitSet(32);
 		this.entrySectorOffsets = new int[entriesPerRegion];
 
 		int entryMappingBytes = entriesPerRegion*Integer.BYTES;
 		int entryMapSectors = ceilDiv(entryMappingBytes, sectorSize);
-		for (int i = 0; i < entryMapSectors; i++) {
-			this.usedSectors.set(i, true);
-		}
 
+		// add a new blank header if this file is new
 		if(file.size() < entryMappingBytes){
 			file.write(ByteBuffer.allocate((int) (entryMappingBytes - file.size())));
 		}
 		file.position(0);
 
+		// read the header into entrySectorOffsets
 		ByteBuffer buffer = ByteBuffer.allocate(entryMappingBytes);
 		file.read(buffer);
 		buffer.flip();
 		buffer.asIntBuffer().get(entrySectorOffsets);
+
+		// initialize usedSectors and make the header sectors as used
+		this.usedSectors = new BitSet(Math.max((int)(file.size() / sectorSize), entryMapSectors));
+		for (int i = 0; i < entryMapSectors; i++) {
+			this.usedSectors.set(i, true);
+		}
+		// parse entrySectorOffsets to find used sectors
+		for (int so : entrySectorOffsets) {
+			int offset = unpackOffset(so);
+			int size = unpackSize(so);
+			for (int i = 0; i < size; i++) {
+				usedSectors.set(offset + i);
+			}
+		}
 	}
 
 	@Override public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
