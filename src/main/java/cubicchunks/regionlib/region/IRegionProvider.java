@@ -26,32 +26,32 @@ package cubicchunks.regionlib.region;
 import java.io.IOException;
 import java.util.Optional;
 
-import cubicchunks.regionlib.IEntryLocation;
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
 
 /**
  * Acts as a source of regions (creation/loading/caching)
  *
- * @param <R> The IRegionLocation type
- * @param <L> The IEntryLocation type
+ * @param <R> The region key type
+ * @param <L> The key type
  */
-public interface IRegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 
 	/**
-	 * Gets an IRegion at a given IRegionLocation, or create one if it does not exist
+	 * Gets an IRegion at a given region key, or create one if it does not exist
 	 *
-	 * @param location The key for the IRegion
-	 * @return The IRegion at {@code location}
+	 * @param regionKey The key for the IRegion
+	 * @return The IRegion at {@code regionKey}
 	 * @throws IOException
 	 */
-	IRegion<R, L> getRegion(R location) throws IOException;
+	IRegion<R, L> getRegion(R regionKey) throws IOException;
 
 	/**
-	 * Gets an IRegion at a given IRegionLocation
+	 * Gets an IRegion at a given region key
 	 *
-	 * @param location The key for the IRegion
-	 * @return An Optional containing the IRegion at {@code location} if it exists
+	 * @param regionKey The key for the IRegion
+	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
 	 * @throws IOException
 	 */
-	Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException;
+	Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException;
 }

@@ -31,16 +31,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
-import cubicchunks.regionlib.IEntryLocation;
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
 
 /**
  * An implementation of IRegionProvider that caches opened Regions
  *
- * @param <R> The IRegionLocation type
- * @param <L> The IEntryLocation type
+ * @param <R> The region key type
+ * @param <L> The key type
  */
-public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegionProvider<R, L> {
+public class RegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegionProvider<R, L> {
 
 	private final Map<R, IRegion<R, L>> regionLocationToRegion;
 
@@ -72,12 +72,12 @@ public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLoc
 		this.maxSize = maxSize;
 	}
 
-	public synchronized IRegion<R, L> getRegion(R location) throws IOException {
-		return getRegion(location, true); // it can't be null here
+	public synchronized IRegion<R, L> getRegion(R regionKey) throws IOException {
+		return getRegion(regionKey, true); // it can't be null here
 	}
 
-	public synchronized Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException {
-		return Optional.ofNullable(getRegion(location, false));
+	public synchronized Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException {
+		return Optional.ofNullable(getRegion(regionKey, false));
 	}
 
 	private synchronized IRegion<R, L> getRegion(R location, boolean canCreate) throws IOException {
@@ -93,7 +93,7 @@ public class RegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLoc
 				return null;
 			}
 
-			region = new Region<>(regionPath, location.getEntryCount(), sectorSize);
+			region = new Region<>(regionPath, location.getKeyCount(), sectorSize);
 			regionLocationToRegion.put(location, region);
 		}
 		return region;

@@ -32,8 +32,8 @@ import java.util.BitSet;
 import java.util.Optional;
 
 import cubicchunks.regionlib.CorruptedDataException;
-import cubicchunks.regionlib.IEntryLocation;
-import cubicchunks.regionlib.IRegionLocation;
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
@@ -42,10 +42,10 @@ import static java.nio.file.StandardOpenOption.WRITE;
 /**
  * A basic region implementation
  *
- * @param <R> The IRegionLocation type
- * @param <L> The IEntryLocation type
+ * @param <R> The region key type
+ * @param <L> The key type
  */
-public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegion<R, L> {
+public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegion<R, L> {
 
 	private static final int PRE_DATA_SIZE = Integer.BYTES;
 	private static final boolean FORCE_WRITE_LOCATIONS = true;
@@ -62,39 +62,51 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 	public Region(Path path, int entriesPerRegion, int sectorSize) throws IOException {
 		this.file = Files.newByteChannel(path, CREATE, READ, WRITE);
 		this.sectorSize = sectorSize;
-		this.usedSectors = new BitSet(32);
 		this.entrySectorOffsets = new int[entriesPerRegion];
 
 		int entryMappingBytes = entriesPerRegion*Integer.BYTES;
 		int entryMapSectors = ceilDiv(entryMappingBytes, sectorSize);
-		for (int i = 0; i < entryMapSectors; i++) {
-			this.usedSectors.set(i, true);
-		}
 
+		// add a new blank header if this file is new
 		if(file.size() < entryMappingBytes){
 			file.write(ByteBuffer.allocate((int) (entryMappingBytes - file.size())));
 		}
 		file.position(0);
 
+		// read the header into entrySectorOffsets
 		ByteBuffer buffer = ByteBuffer.allocate(entryMappingBytes);
 		file.read(buffer);
 		buffer.flip();
 		buffer.asIntBuffer().get(entrySectorOffsets);
+
+		// initialize usedSectors and make the header sectors as used
+		this.usedSectors = new BitSet(Math.max((int)(file.size() / sectorSize), entryMapSectors));
+		for (int i = 0; i < entryMapSectors; i++) {
+			this.usedSectors.set(i, true);
+		}
+		// parse entrySectorOffsets to find used sectors
+		for (int so : entrySectorOffsets) {
+			int offset = unpackOffset(so);
+			int size = unpackSize(so);
+			for (int i = 0; i < size; i++) {
+				usedSectors.set(offset + i);
+			}
+		}
 	}
 
-	@Override public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
-		int oldSectorLocation = getExistingSectorLocationFor(location);
-		int sectorLocation = findSectorFor(data.remaining(), oldSectorLocation);
+	@Override public synchronized void writeValue(L key, ByteBuffer value) throws IOException {
+		int oldSectorLocation = getExistingSectorLocationFor(key);
+		int sectorLocation = findSectorFor(value.remaining(), oldSectorLocation);
 
 		int bytesOffset = unpackOffset(sectorLocation)*sectorSize;
 
 		preDataBuffer.clear();
-		preDataBuffer.putInt(0, data.remaining());
+		preDataBuffer.putInt(0, value.remaining());
 		file.position(bytesOffset).write(preDataBuffer);
 
-		file.write(data);
+		file.write(value);
 
-		writeSectorLocationFor(location, sectorLocation);
+		writeSectorLocationFor(key, sectorLocation);
 		updateUsedSectorsFor(oldSectorLocation, sectorLocation);
 	}
 
@@ -114,8 +126,8 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException {
-		int sectorLocation = getExistingSectorLocationFor(location);
+	@Override public synchronized Optional<ByteBuffer> readValue(L key) throws IOException {
+		int sectorLocation = getExistingSectorLocationFor(key);
 
 		if (sectorLocation == 0) {
 			return Optional.empty();
