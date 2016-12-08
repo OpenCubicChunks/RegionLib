@@ -21,39 +21,16 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib;
+package cubicchunks.regionlib.region;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.Optional;
 
-import cubicchunks.regionlib.region.IRegion;
-import cubicchunks.regionlib.region.IRegionProvider;
-import cubicchunks.regionlib.region.RegionProvider;
+import cubicchunks.regionlib.IEntryLocation;
+import cubicchunks.regionlib.IRegionLocation;
 
-public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+public interface IRegionProvider<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+	IRegion<R, L> getRegion(R location) throws IOException;
 
-	private final IRegionProvider<R, L> regionCache;
-
-	public SaveSection(Path directory) {
-		this.regionCache = new RegionProvider<>(directory);
-	}
-
-	public SaveSection(IRegionProvider<R, L> regionCache) {
-		this.regionCache = regionCache;
-	}
-
-	public void save(L location, ByteBuffer data) throws IOException{
-		this.regionCache.getRegion(location.getRegionLocation())
-			.writeEntry(location, data);
-	}
-
-	public Optional<ByteBuffer> load(L location) throws IOException, CurruptedDataException {
-		Optional<IRegion<R, L>> region = this.regionCache.getRegionIfExists(location.getRegionLocation());
-		if (region.isPresent()) {
-			return region.get().readEntry(location);
-		}
-		return Optional.empty();
-	}
+	Optional<IRegion<R, L>> getRegionIfExists(R location) throws IOException;
 }

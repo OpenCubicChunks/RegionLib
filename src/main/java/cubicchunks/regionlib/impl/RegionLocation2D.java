@@ -23,18 +23,15 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.region.IRegionLocation;
+import cubicchunks.regionlib.IRegionLocation;
 
 public class RegionLocation2D implements IRegionLocation<RegionLocation2D, EntryLocation2D> {
 	private final int x;
 	private final int z;
-	private final String name;
 
 	public RegionLocation2D(int x, int z) {
 		this.x = x;
 		this.z = z;
-
-		this.name = x + "." + z + ".2dr";
 	}
 
 	public int getX() {
@@ -46,7 +43,11 @@ public class RegionLocation2D implements IRegionLocation<RegionLocation2D, Entry
 	}
 
 	@Override public String getRegionName() {
-		return name;
+		return x + "." + z + ".2dr";
+	}
+
+	@Override public int getEntryCount() {
+		return EntryLocation2D.ENTRIES_PER_REGION;
 	}
 
 	@Override public boolean equals(Object o) {
@@ -68,7 +69,7 @@ public class RegionLocation2D implements IRegionLocation<RegionLocation2D, Entry
 
 	@Override public String toString() {
 		return "RegionLocation2D{" +
-			"name='" + name + '\'' +
+			"name='" + getRegionName() + '\'' +
 			'}';
 	}
 }

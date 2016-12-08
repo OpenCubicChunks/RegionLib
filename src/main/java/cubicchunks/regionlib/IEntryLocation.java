@@ -23,8 +23,6 @@
  */
 package cubicchunks.regionlib;
 
-import cubicchunks.regionlib.region.IRegionLocation;
-
 public interface IEntryLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
 	R getRegionLocation();
 

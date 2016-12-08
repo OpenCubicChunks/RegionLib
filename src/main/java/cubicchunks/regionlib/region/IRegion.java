@@ -23,15 +23,17 @@
  */
 package cubicchunks.regionlib.region;
 
+import java.io.Closeable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
+import cubicchunks.regionlib.CurruptedDataException;
 import cubicchunks.regionlib.IEntryLocation;
+import cubicchunks.regionlib.IRegionLocation;
 
-public interface RegionFactory<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
-	Optional<Region<R, L>> createRegion(R location, CreateType type) throws IOException;
+public interface IRegion<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> extends Closeable {
+	void writeEntry(L location, ByteBuffer data) throws IOException;
 
-	enum CreateType {
-		CREATE, LOAD
-	}
+	Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException;
 }

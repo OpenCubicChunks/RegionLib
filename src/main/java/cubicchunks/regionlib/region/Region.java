@@ -23,7 +23,6 @@
  */
 package cubicchunks.regionlib.region;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -34,12 +33,13 @@ import java.util.Optional;
 
 import cubicchunks.regionlib.CurruptedDataException;
 import cubicchunks.regionlib.IEntryLocation;
+import cubicchunks.regionlib.IRegionLocation;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
-public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements Closeable {
+public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegion<R, L> {
 
 	private static final int PRE_DATA_SIZE = Integer.BYTES;
 	private static final boolean FORCE_WRITE_LOCATIONS = true;
@@ -76,7 +76,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		buffer.asIntBuffer().get(entrySectorOffsets);
 	}
 
-	public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
+	@Override public synchronized void writeEntry(L location, ByteBuffer data) throws IOException {
 		int oldSectorLocation = getExistingSectorLocationFor(location);
 		int sectorLocation = findSectorFor(data.remaining(), oldSectorLocation);
 
@@ -108,7 +108,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException {
+	@Override public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException {
 		int sectorLocation = getExistingSectorLocationFor(location);
 
 		if (sectorLocation == 0) {
@@ -204,7 +204,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		return sectorLocation >>> 8;
 	}
 
-	public static int unpackSize(int sectorLocation) {
+	private static int unpackSize(int sectorLocation) {
 		return sectorLocation & 0xFF;
 	}
 

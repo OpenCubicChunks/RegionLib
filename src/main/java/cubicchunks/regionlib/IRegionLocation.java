@@ -21,10 +21,10 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region;
-
-import cubicchunks.regionlib.IEntryLocation;
+package cubicchunks.regionlib;
 
 public interface IRegionLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
 	String getRegionName();
+
+	int getEntryCount();
 }
