@@ -32,25 +32,61 @@ import cubicchunks.regionlib.region.IRegion;
 import cubicchunks.regionlib.region.IRegionProvider;
 import cubicchunks.regionlib.region.RegionProvider;
 
+/**
+ * A low level key/value database optimized for storing
+ * keys that are close together/clumped<br/>
+ * Example: Key could be an integer location in n-dimensional space, like Minecraft chunk locations
+ *
+ * @param <R> The region key type
+ * @param <L> The location key type
+ */
 public class SaveSection<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
 
-	private final IRegionProvider<R, L> regionCache;
+	private final IRegionProvider<R, L> regionProvider;
 
+	/**
+	 * Creates a SaveSection that stores its data in {@code directory}
+	 *
+	 * @param directory The place to store the region files
+	 */
 	public SaveSection(Path directory) {
-		this.regionCache = new RegionProvider<>(directory);
+		this.regionProvider = new RegionProvider<>(directory);
 	}
 
-	public SaveSection(IRegionProvider<R, L> regionCache) {
-		this.regionCache = regionCache;
+	/**
+	 * Creates a SaveSection with a customized IRegionProvider
+	 *
+	 * @param regionProvider The region provider
+	 */
+	public SaveSection(IRegionProvider<R, L> regionProvider) {
+		this.regionProvider = regionProvider;
 	}
 
-	public void save(L location, ByteBuffer data) throws IOException{
-		this.regionCache.getRegion(location.getRegionLocation())
+	/**
+	 * Saves/puts a value at a key<br/>
+	 * This method is thread safe.
+	 *
+	 * @param location The key
+	 * @param data The value to save
+	 * @throws IOException
+	 * @throws CorruptedDataException
+	 */
+	public void save(L location, ByteBuffer data) throws IOException {
+		this.regionProvider.getRegion(location.getRegionLocation())
 			.writeEntry(location, data);
 	}
 
-	public Optional<ByteBuffer> load(L location) throws IOException, CurruptedDataException {
-		Optional<IRegion<R, L>> region = this.regionCache.getRegionIfExists(location.getRegionLocation());
+	/**
+	 * Loads/gets a value at a key<br/>
+	 * This Method is thread safe.
+	 *
+	 * @param location The key
+	 * @return An Optional containing the value if it exists
+	 * @throws IOException
+	 * @throws CorruptedDataException
+	 */
+	public Optional<ByteBuffer> load(L location) throws IOException {
+		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(location.getRegionLocation());
 		if (region.isPresent()) {
 			return region.get().readEntry(location);
 		}

@@ -25,6 +25,9 @@ package cubicchunks.regionlib.impl;
 
 import cubicchunks.regionlib.IEntryLocation;
 
+/**
+ * A 3D implementation of IEntryLocation
+ */
 public class EntryLocation3D implements IEntryLocation<RegionLocation3D, EntryLocation3D> {
 	private static final int LOC_BITS = 4;
 	private static final int LOC_BITMASK = (1 << LOC_BITS) - 1;

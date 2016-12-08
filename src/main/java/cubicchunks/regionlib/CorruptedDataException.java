@@ -25,6 +25,12 @@ package cubicchunks.regionlib;
 
 import java.io.IOException;
 
-public interface IOWriteTask {
-	void write() throws IOException;
+/**
+ * An exception that is thrown when data can not be read/written
+ * do to a format problem.
+ */
+public class CorruptedDataException extends IOException {
+	public CorruptedDataException(String text) {
+		super(text);
+	}
 }

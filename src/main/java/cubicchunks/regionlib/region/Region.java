@@ -31,7 +31,7 @@ import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.Optional;
 
-import cubicchunks.regionlib.CurruptedDataException;
+import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IEntryLocation;
 import cubicchunks.regionlib.IRegionLocation;
 
@@ -39,6 +39,12 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
+/**
+ * A basic region implementation
+ *
+ * @param <R> The IRegionLocation type
+ * @param <L> The IEntryLocation type
+ */
 public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> implements IRegion<R, L> {
 
 	private static final int PRE_DATA_SIZE = Integer.BYTES;
@@ -108,7 +114,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException {
+	@Override public synchronized Optional<ByteBuffer> readEntry(L location) throws IOException {
 		int sectorLocation = getExistingSectorLocationFor(location);
 
 		if (sectorLocation == 0) {
@@ -122,7 +128,7 @@ public class Region<R extends IRegionLocation<R, L>, L extends IEntryLocation<R,
 		file.position(sectorOffset*sectorSize).read(preDataBuffer);
 		int dataLength = preDataBuffer.getInt(0);
 		if (dataLength > sectorCount*sectorSize) {
-			throw new CurruptedDataException("Expected data size max" + sectorCount*sectorSize + " but found " + dataLength);
+			throw new CorruptedDataException("Expected data size max" + sectorCount*sectorSize + " but found " + dataLength);
 		}
 
 		ByteBuffer bytes = ByteBuffer.allocate(dataLength);

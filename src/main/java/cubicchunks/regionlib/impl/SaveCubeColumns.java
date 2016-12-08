@@ -29,15 +29,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
-import cubicchunks.regionlib.CurruptedDataException;
-import cubicchunks.regionlib.IOWriteTask;
 import cubicchunks.regionlib.SaveSection;
 
 /**
- * A save for 3d and 2d structures.
- * <p>
- * This will not automatically save data to disk, instead it gives {@link IOWriteTask} objects
- * to the given consumer, which should handle writing them (using {@link IOWriteTask#write()})
+ * A save for 3d and 2d structures, like Cubes and Columns in CubicChunks.
  */
 public class SaveCubeColumns {
 
@@ -73,7 +68,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException {
 		return saveSection3D.load(location);
 	}
 
@@ -82,7 +77,7 @@ public class SaveCubeColumns {
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
 	 */
-	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException, CurruptedDataException {
+	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException {
 		return saveSection2D.load(location);
 	}
 

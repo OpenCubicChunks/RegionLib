@@ -23,8 +23,29 @@
  */
 package cubicchunks.regionlib;
 
+/**
+ * A key for locating a region.<br/>
+ * This class should be immutable.
+ *
+ * @param <R> This type
+ * @param <L> The key type used to locate values within this region
+ */
 public interface IRegionLocation<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> {
+	/**
+	 * Gets the region's name.<br/>
+	 * The name must be unique per region location.<br/>
+	 * The name will usually be used as a file name so don't use any special characters.
+	 *
+	 * @return This region's name
+	 */
 	String getRegionName();
 
+	/**
+	 * Gets the maximum number of keys within this region.<br/>
+	 * (yes, different regions *can* have different a different number of keys,
+	 * but don't do this unless you KNOW what you are doing)
+	 *
+	 * @return The number of keys in this region
+	 */
 	int getEntryCount();
 }

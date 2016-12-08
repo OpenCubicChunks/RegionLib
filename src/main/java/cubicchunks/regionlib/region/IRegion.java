@@ -28,12 +28,36 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-import cubicchunks.regionlib.CurruptedDataException;
+import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IEntryLocation;
 import cubicchunks.regionlib.IRegionLocation;
 
+/**
+ * Stores all values within a fixed measure (area/volume/what ever) of keys.<br/>
+ * Regions are used as a way of *chunking* the database.
+ *
+ * @param <R> The IRegionLocation type
+ * @param <L> The IEntryLocation type
+ */
 public interface IRegion<R extends IRegionLocation<R, L>, L extends IEntryLocation<R, L>> extends Closeable {
+
+	/**
+	 * Stores a value at a key within this region
+	 *
+	 * @param location A key within this region
+	 * @param data The value to store
+	 * @throws IOException
+	 * @throws CorruptedDataException
+	 */
 	void writeEntry(L location, ByteBuffer data) throws IOException;
 
-	Optional<ByteBuffer> readEntry(L location) throws IOException, CurruptedDataException;
+	/**
+	 * Loads a value at a key if there was something stored there before, within this region
+	 *
+	 * @param location The key within this region
+	 * @return The value at {@code location} if it exists
+	 * @throws IOException
+	 * @throws CorruptedDataException
+	 */
+	Optional<ByteBuffer> readEntry(L location) throws IOException;
 }
