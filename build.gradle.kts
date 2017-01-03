@@ -58,7 +58,6 @@ repositories {
 
 dependencies {
     testCompile("junit:junit:4.11")
-    compile("org.apache.logging.log4j:log4j-api:2.7")
 }
 
 //returns version string according to this: http://semver.org/
