@@ -23,6 +23,9 @@
  */
 package cubicchunks.regionlib.region;
 
+import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.IRegionKey;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,9 +33,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-
-import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 
 /**
  * An implementation of IRegionProvider that caches opened Regions
@@ -42,68 +42,85 @@ import cubicchunks.regionlib.IRegionKey;
  */
 public class RegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegionProvider<R, L> {
 
-	private final Map<R, IRegion<R, L>> regionLocationToRegion;
+    private final Map<R, IRegion<R, L>> regionLocationToRegion;
 
-	private final Path directory;
-	private final int sectorSize;
-	private final int maxSize;
+    private final Path directory;
+    private final int sectorSize;
+    private final int maxSize;
+    private boolean closed;
 
-	/**
-	 * Creates a RegionProvider with default settings using the given {@code directory}
-	 *
-	 * @param directory The directory that region files are stored in
-	 */
-	public RegionProvider(Path directory) {
-		this(directory, 512, 126);
-	}
+    /**
+     * Creates a RegionProvider with default settings using the given {@code directory}
+     *
+     * @param directory The directory that region files are stored in
+     */
+    public RegionProvider(Path directory) {
+        this(directory, 512, 126);
+    }
 
-	/**
-	 * Creates a RegionProvider with custom sector size and custom max cache size
-	 * using the given {@code directory}
-	 *
-	 * @param directory The directory that region files are stored in
-	 * @param sectorSize The sector size used in the region files
-	 * @param maxSize The maximum number of cached region files
-	 */
-	public RegionProvider(Path directory, int sectorSize, int maxSize) {
-		this.regionLocationToRegion = new HashMap<>(maxSize*2); // methods below are synchronized anyway, no need for concurrent map
-		this.directory = directory;
-		this.sectorSize = sectorSize;
-		this.maxSize = maxSize;
-	}
+    /**
+     * Creates a RegionProvider with custom sector size and custom max cache size
+     * using the given {@code directory}
+     *
+     * @param directory The directory that region files are stored in
+     * @param sectorSize The sector size used in the region files
+     * @param maxSize The maximum number of cached region files
+     */
+    public RegionProvider(Path directory, int sectorSize, int maxSize) {
+        this.regionLocationToRegion = new HashMap<>(maxSize * 2); // methods below are synchronized anyway, no need for concurrent map
+        this.directory = directory;
+        this.sectorSize = sectorSize;
+        this.maxSize = maxSize;
+    }
 
-	public synchronized IRegion<R, L> getRegion(R regionKey) throws IOException {
-		return getRegion(regionKey, true); // it can't be null here
-	}
+    @Override
+    public synchronized IRegion<R, L> getRegion(R regionKey) throws IOException {
+        if (closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        return getRegion(regionKey, true); // it can't be null here
+    }
 
-	public synchronized Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException {
-		return Optional.ofNullable(getRegion(regionKey, false));
-	}
+    @Override
+    public synchronized Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException {
+        if (closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        return Optional.ofNullable(getRegion(regionKey, false));
+    }
 
-	private synchronized IRegion<R, L> getRegion(R location, boolean canCreate) throws IOException {
-		if (regionLocationToRegion.size() > maxSize) {
-			this.clearRegions();
-		}
+    @Override public void close() throws IOException {
+        if (closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        this.clearRegions();
+        this.closed = true;
+    }
 
-		IRegion<R, L> region = regionLocationToRegion.get(location);
-		if (region == null) {
-			Path regionPath = directory.resolve(location.getRegionName());
+    private synchronized IRegion<R, L> getRegion(R location, boolean canCreate) throws IOException {
+        if (regionLocationToRegion.size() > maxSize) {
+            this.clearRegions();
+        }
 
-			if (!canCreate && !Files.exists(regionPath)) {
-				return null;
-			}
+        IRegion<R, L> region = regionLocationToRegion.get(location);
+        if (region == null) {
+            Path regionPath = directory.resolve(location.getRegionName());
 
-			region = new Region<>(regionPath, location.getKeyCount(), sectorSize);
-			regionLocationToRegion.put(location, region);
-		}
-		return region;
-	}
+            if (!canCreate && !Files.exists(regionPath)) {
+                return null;
+            }
 
-	private void clearRegions() throws IOException {
-		Iterator<IRegion<R, L>> it = regionLocationToRegion.values().iterator();
-		while (it.hasNext()) {
-			it.next().close();
-			it.remove();
-		}
-	}
+            region = new Region<>(regionPath, location.getKeyCount(), sectorSize);
+            regionLocationToRegion.put(location, region);
+        }
+        return region;
+    }
+
+    private void clearRegions() throws IOException {
+        Iterator<IRegion<R, L>> it = regionLocationToRegion.values().iterator();
+        while (it.hasNext()) {
+            it.next().close();
+            it.remove();
+        }
+    }
 }

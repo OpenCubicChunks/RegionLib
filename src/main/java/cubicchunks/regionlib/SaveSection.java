@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -40,7 +41,7 @@ import cubicchunks.regionlib.region.RegionProvider;
  * @param <R> The region key type
  * @param <L> The location key type
  */
-public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
+public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements Closeable {
 
 	private final IRegionProvider<R, L> regionProvider;
 
@@ -91,5 +92,10 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 			return region.get().readValue(key);
 		}
 		return Optional.empty();
+	}
+
+	@Override
+	public void close() throws IOException {
+		this.regionProvider.close();
 	}
 }

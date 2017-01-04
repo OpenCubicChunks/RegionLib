@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.region;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -35,7 +36,7 @@ import cubicchunks.regionlib.IRegionKey;
  * @param <R> The region key type
  * @param <L> The key type
  */
-public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
+public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> extends Closeable {
 
 	/**
 	 * Gets an IRegion at a given region key, or create one if it does not exist

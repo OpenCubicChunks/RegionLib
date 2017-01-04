@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.impl;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -34,7 +35,7 @@ import cubicchunks.regionlib.SaveSection;
 /**
  * A save for 3d and 2d structures, like Cubes and Columns in CubicChunks.
  */
-public class SaveCubeColumns {
+public class SaveCubeColumns implements Closeable {
 
 	private final SaveSection<RegionLocation2D, EntryLocation2D> saveSection2D;
 	private final SaveSection<RegionLocation3D, EntryLocation3D> saveSection3D;
@@ -97,5 +98,10 @@ public class SaveCubeColumns {
 		SaveSection<RegionLocation3D, EntryLocation3D> section3d = new SaveSection<>(part3d);
 
 		return new SaveCubeColumns(section2d, section3d);
+	}
+
+	@Override public void close() throws IOException {
+		this.saveSection2D.close();
+		this.saveSection3D.close();
 	}
 }
