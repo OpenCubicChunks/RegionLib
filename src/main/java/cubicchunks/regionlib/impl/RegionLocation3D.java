@@ -83,4 +83,12 @@ public class RegionLocation3D implements IRegionKey<RegionLocation3D, EntryLocat
 			"name='" + getRegionName() + '\'' +
 			'}';
 	}
+
+	public static RegionLocation3D fromName(String name) {
+		if (!name.matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
+			throw new IllegalArgumentException("Invalid name " + name);
+		}
+		String[] s = name.split("\\.");
+		return new RegionLocation3D(Integer.parseInt(s[0]), Integer.parseInt(s[1]), Integer.parseInt(s[2]));
+	}
 }

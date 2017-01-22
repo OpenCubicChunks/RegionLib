@@ -132,8 +132,8 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		return -Math.floorDiv(-x, y);
 	}
 
-	public static Builder builder() {
-		return new Builder();
+	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> Builder<R, L> builder() {
+		return new Builder<>();
 	}
 
 	public static class Builder<R extends IRegionKey<R, L>, L extends IKey<R, L>> {

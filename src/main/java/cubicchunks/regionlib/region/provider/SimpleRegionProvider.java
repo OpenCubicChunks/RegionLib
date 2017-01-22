@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.IRegionKey;
@@ -23,11 +25,13 @@ public class SimpleRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 
 	private Path directory;
 	private RegionFactory<R, L> regionBuilder;
+	private Function<String, R> nameToRegionKey;
 	private Map<R, IRegion<R, L>> toReturn;
 
-	public SimpleRegionProvider(Path directory, RegionFactory<R, L> regionBuilder) {
+	public SimpleRegionProvider(Path directory, RegionFactory<R, L> regionBuilder, Function<String, R> nameToRegionKey) {
 		this.directory = directory;
 		this.regionBuilder = regionBuilder;
+		this.nameToRegionKey = nameToRegionKey;
 		this.toReturn = new HashMap<>();
 	}
 
@@ -58,6 +62,14 @@ public class SimpleRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		reg.close();
 	}
 
+	@Override public Iterator<R> allRegions() throws IOException {
+		return Files.list(directory)
+			.map(Path::getFileName)
+			.map(Path::toString)
+			.map(nameToRegionKey::apply)
+			.iterator();
+	}
+
 	@Override public void close() throws IOException {
 		if (!toReturn.isEmpty()) {
 			System.err.println("Warning: leaked " + toReturn.size() + " regions! Closing them now");
@@ -69,13 +81,14 @@ public class SimpleRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		}
 	}
 
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> SimpleRegionProvider<R, L> createDefault(Path directory, int sectorSize) {
+	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> SimpleRegionProvider<R, L> createDefault(Path directory, Function<String, R> nameToRegionKey, int sectorSize) {
 		return new SimpleRegionProvider<>(directory, (p, r) ->
 			new Region.Builder<R, L>()
 				.setPath(p)
 				.setEntriesPerRegion(r.getKeyCount())
 				.setSectorSize(sectorSize)
-				.build()
+				.build(),
+			nameToRegionKey
 		);
 	}
 

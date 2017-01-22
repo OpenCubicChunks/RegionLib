@@ -75,4 +75,12 @@ public class RegionLocation2D implements IRegionKey<RegionLocation2D, EntryLocat
 			"name='" + getRegionName() + '\'' +
 			'}';
 	}
+
+	public static RegionLocation2D fromName(String name) {
+		if (!name.matches("-?\\d+\\.-?\\d+\\.2dr")) {
+			throw new IllegalArgumentException("Invalid name " + name);
+		}
+		String[] s = name.split("\\.");
+		return new RegionLocation2D(Integer.parseInt(s[0]), Integer.parseInt(s[1]));
+	}
 }

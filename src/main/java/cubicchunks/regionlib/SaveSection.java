@@ -27,7 +27,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Function;
 
 import cubicchunks.regionlib.region.IRegion;
 import cubicchunks.regionlib.region.provider.CachedRegionProvider;
@@ -82,6 +84,14 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 		return Optional.empty();
 	}
 
+	/**
+	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
+	 * guaranteed to be listed.
+	 */
+	public Iterator<R> allRegions() throws IOException {
+		return this.regionProvider.allRegions();
+	}
+
 	@Override
 	public void close() throws IOException {
 		this.regionProvider.close();
@@ -92,7 +102,7 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 *
 	 * @param directory The place to store the region files
 	 */
-	public static SaveSection createDefaultAt(Path directory) {
-		return new SaveSection(CachedRegionProvider.makeProvider(directory));
+	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> SaveSection<R, L> createDefaultAt(Path directory, Function<String, R> nameToRegionKey) {
+		return new SaveSection(CachedRegionProvider.makeProvider(directory, nameToRegionKey));
 	}
 }

@@ -25,6 +25,7 @@ package cubicchunks.regionlib.region.provider;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
@@ -63,4 +64,10 @@ public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L
 	 * by implementation.
 	 */
 	void returnRegion(R key) throws IOException;
+
+	/**
+	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
+	 * guaranteed to be listed.
+	 */
+	Iterator<R> allRegions() throws IOException;
 }

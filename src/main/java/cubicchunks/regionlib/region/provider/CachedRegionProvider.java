@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.IRegionKey;
@@ -80,6 +81,10 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		// no-op
 	}
 
+	@Override public Iterator<R> allRegions() throws IOException {
+		return sourceProvider.allRegions();
+	}
+
 	@Override public void close() throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
@@ -113,8 +118,9 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	 *
 	 * @param directory The directory that region files are stored in
 	 */
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(Path directory) {
-		return makeProvider(directory, 512, 128);
+	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(
+		Path directory, Function<String, R> nameToRegionKey) {
+		return makeProvider(directory, nameToRegionKey, 512, 128);
 	}
 
 	/**
@@ -125,8 +131,8 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	 * @param sectorSize The sector size used in the region files
 	 * @param maxSize The maximum number of cached region files
 	 */
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(Path directory, int sectorSize,
-	                                                                                                         int maxSize) {
-		return new CachedRegionProvider<R, L>(SimpleRegionProvider.createDefault(directory, sectorSize), maxSize);
+	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(
+		Path directory, Function<String, R> nameToRegionKey, int sectorSize, int maxSize) {
+		return new CachedRegionProvider<R, L>(SimpleRegionProvider.createDefault(directory, nameToRegionKey, sectorSize), maxSize);
 	}
 }
