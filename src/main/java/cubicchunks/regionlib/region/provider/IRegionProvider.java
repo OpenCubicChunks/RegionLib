@@ -21,7 +21,7 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region;
+package cubicchunks.regionlib.region.provider;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.IRegionKey;
+import cubicchunks.regionlib.region.IRegion;
 
 /**
  * Acts as a source of regions (creation/loading/caching)
@@ -42,8 +43,8 @@ public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L
 	 * Gets an IRegion at a given region key, or create one if it does not exist
 	 *
 	 * @param regionKey The key for the IRegion
+	 *
 	 * @return The IRegion at {@code regionKey}
-	 * @throws IOException
 	 */
 	IRegion<R, L> getRegion(R regionKey) throws IOException;
 
@@ -51,8 +52,15 @@ public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L
 	 * Gets an IRegion at a given region key
 	 *
 	 * @param regionKey The key for the IRegion
+	 *
 	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
-	 * @throws IOException
 	 */
 	Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException;
+
+	/**
+	 * After region from getRegion or getRegionIfExists is no longer needed, this method should be called to ensure that
+	 * data is written to disk when close() is called. State opf the given region after using this method may be defined
+	 * by implementation.
+	 */
+	void returnRegion(R key) throws IOException;
 }

@@ -30,8 +30,8 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import cubicchunks.regionlib.region.IRegion;
-import cubicchunks.regionlib.region.IRegionProvider;
-import cubicchunks.regionlib.region.RegionProvider;
+import cubicchunks.regionlib.region.provider.CachedRegionProvider;
+import cubicchunks.regionlib.region.provider.IRegionProvider;
 
 /**
  * A low level key/value database optimized for storing
@@ -44,15 +44,6 @@ import cubicchunks.regionlib.region.RegionProvider;
 public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements Closeable {
 
 	private final IRegionProvider<R, L> regionProvider;
-
-	/**
-	 * Creates a SaveSection that stores its data in {@code directory}
-	 *
-	 * @param directory The place to store the region files
-	 */
-	public SaveSection(Path directory) {
-		this.regionProvider = new RegionProvider<>(directory);
-	}
 
 	/**
 	 * Creates a SaveSection with a customized IRegionProvider
@@ -69,8 +60,6 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 *
 	 * @param key The key
 	 * @param value The value to save
-	 * @throws IOException
-	 * @throws CorruptedDataException
 	 */
 	public void save(L key, ByteBuffer value) throws IOException {
 		this.regionProvider.getRegion(key.getRegionKey())
@@ -82,9 +71,8 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 * This Method is thread safe.
 	 *
 	 * @param key The key
+	 *
 	 * @return An Optional containing the value if it exists
-	 * @throws IOException
-	 * @throws CorruptedDataException
 	 */
 	public Optional<ByteBuffer> load(L key) throws IOException {
 		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
@@ -97,5 +85,14 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	@Override
 	public void close() throws IOException {
 		this.regionProvider.close();
+	}
+
+	/**
+	 * Creates a SaveSection that stores its data in {@code directory}
+	 *
+	 * @param directory The place to store the region files
+	 */
+	public static SaveSection createDefaultAt(Path directory) {
+		return new SaveSection(CachedRegionProvider.makeProvider(directory));
 	}
 }

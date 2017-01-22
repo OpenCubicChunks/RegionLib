@@ -41,10 +41,10 @@ public interface IKey<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
 	/**
 	 * Gets the index of this key in the region associated with
 	 * {@link IKey#getRegionKey()}'s region.<br/>
-	 *
+	 * <p>
 	 * The index must be grater than or equal to 0 AND less than
 	 * {@link IKey#getRegionKey()}'s {@link IRegionKey#getKeyCount()}.<br/>
-	 *
+	 * <p>
 	 * The index must not overlap with another key's index within the region<br/>
 	 *
 	 * @return The index

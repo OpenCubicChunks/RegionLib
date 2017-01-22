@@ -38,6 +38,7 @@ import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.impl.RegionLocation3D;
 import cubicchunks.regionlib.region.Region;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -54,7 +55,8 @@ public class TestRegion {
 		folder.newFolder("save");
 		Path path = folder.newFile("save/test.3dr").toPath();
 		RegionLocation3D regionKey = new RegionLocation3D(0, 0, 0);
-		Region<RegionLocation3D, EntryLocation3D> save = new Region<>(path, regionKey.getKeyCount(), 512);
+		Region<RegionLocation3D, EntryLocation3D> save =
+                new Region.Builder().setPath(path).setEntriesPerRegion(regionKey.getKeyCount()).setSectorSize(512).build();
 
 		Random rnd = new Random(42);
 		ByteBuffer[] dataArray = new ByteBuffer[1000];
@@ -83,7 +85,7 @@ public class TestRegion {
 
 			// re-open the Region
 			save.close();
-			save = new Region<>(path, regionKey.getKeyCount(), 512);
+			save = new Region.Builder().setPath(path).setEntriesPerRegion(regionKey.getKeyCount()).setSectorSize(512).build();
 
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {
@@ -100,7 +102,8 @@ public class TestRegion {
 				}
 				totalRead += loaded.remaining();
 
-				assertEquals("Reading array " + readI + " after writing " + i, dataArray[readI], loaded);
+				// use assertArrayEquals so that it actually shows the difference when it's not equal
+				assertArrayEquals("Reading array " + readI + " after writing " + i, dataArray[readI].array(), loaded.array());
 			}
 
 		}

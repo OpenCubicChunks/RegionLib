@@ -94,8 +94,8 @@ public class SaveCubeColumns implements Closeable {
 		Path part3d = directory.resolve("region3d");
 		Files.createDirectories(part3d);
 
-		SaveSection<RegionLocation2D, EntryLocation2D> section2d = new SaveSection<>(part2d);
-		SaveSection<RegionLocation3D, EntryLocation3D> section3d = new SaveSection<>(part3d);
+		SaveSection<RegionLocation2D, EntryLocation2D> section2d = SaveSection.createDefaultAt(part2d);
+		SaveSection<RegionLocation3D, EntryLocation3D> section3d = SaveSection.createDefaultAt(part3d);
 
 		return new SaveCubeColumns(section2d, section3d);
 	}

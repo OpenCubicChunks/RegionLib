@@ -1,6 +1,9 @@
 dist: trusty
 
 language: java
+cache:
+  directories:
+  - $HOME/.gradle
 jdk:
   - openjdk8
   - oraclejdk8

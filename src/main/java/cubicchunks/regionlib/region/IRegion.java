@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.IRegionKey;
 
@@ -46,8 +45,6 @@ public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> exten
 	 *
 	 * @param key A key within this region
 	 * @param value The value to store
-	 * @throws IOException
-	 * @throws CorruptedDataException
 	 */
 	void writeValue(L key, ByteBuffer value) throws IOException;
 
@@ -55,9 +52,8 @@ public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> exten
 	 * Loads a value at a key if there was something stored there before, within this region
 	 *
 	 * @param key The key within this region
+	 *
 	 * @return The value at {@code key} if it exists
-	 * @throws IOException
-	 * @throws CorruptedDataException
 	 */
 	Optional<ByteBuffer> readValue(L key) throws IOException;
 }
