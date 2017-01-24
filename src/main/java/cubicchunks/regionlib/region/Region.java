@@ -119,6 +119,13 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		}
 	}
 
+	/**
+	 * Returns true if something was stored there before within this region.
+	 */
+	@Override public synchronized boolean hasValue(L key) {
+		return sectorMap.getEntryLocation(key).isPresent();
+	}
+
 
 	private int getSectorNumber(int bytes) {
 		return ceilDiv(bytes, sectorSize);

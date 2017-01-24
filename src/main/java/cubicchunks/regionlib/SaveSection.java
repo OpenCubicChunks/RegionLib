@@ -94,6 +94,16 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 		return this.regionProvider.allRegions();
 	}
 
+	public boolean hasEntry(L key) throws IOException {
+		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
+		if (region.isPresent()) {
+			boolean ret = region.get().hasValue(key);
+			this.regionProvider.returnRegion(key.getRegionKey());
+			return ret;
+		}
+		return false;
+	}
+
 	@Override
 	public void close() throws IOException {
 		this.regionProvider.close();

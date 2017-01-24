@@ -56,4 +56,9 @@ public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> exten
 	 * @return The value at {@code key} if it exists
 	 */
 	Optional<ByteBuffer> readValue(L key) throws IOException;
+
+	/**
+	 * Returns true if something was stored there before within this region.
+	 */
+	boolean hasValue(L key);
 }
