@@ -64,8 +64,8 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 * @param value The value to save
 	 */
 	public void save(L key, ByteBuffer value) throws IOException {
-		this.regionProvider.getRegion(key.getRegionKey())
-			.writeValue(key, value);
+		this.regionProvider.getRegion(key.getRegionKey()).writeValue(key, value);
+		this.regionProvider.returnRegion(key.getRegionKey());
 	}
 
 	/**
@@ -79,7 +79,9 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	public Optional<ByteBuffer> load(L key) throws IOException {
 		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
 		if (region.isPresent()) {
-			return region.get().readValue(key);
+			Optional<ByteBuffer> ret = region.get().readValue(key);
+			this.regionProvider.returnRegion(key.getRegionKey());
+			return ret;
 		}
 		return Optional.empty();
 	}

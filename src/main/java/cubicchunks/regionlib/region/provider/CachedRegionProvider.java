@@ -101,6 +101,9 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		IRegion<R, L> region = regionLocationToRegion.get(location);
 		if (region == null) {
 			region = canCreate ? sourceProvider.getRegion(location) : sourceProvider.getRegionIfExists(location).orElse(null);
+			if (region != null) {
+				regionLocationToRegion.put(location, region);
+			}
 		}
 		return region;
 	}
