@@ -74,7 +74,7 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 
 		int bytesOffset = location.getOffset()*sectorSize;
 
-		file.position(bytesOffset).write((ByteBuffer) ByteBuffer.allocate(Integer.BYTES).putInt(size).flip());
+		file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
 		file.write(value);
 
 		final int id = key.getId();

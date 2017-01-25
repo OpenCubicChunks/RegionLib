@@ -79,7 +79,7 @@ public class MinecraftChunkLocation implements IKey<MinecraftRegionLocation, Min
 
 	@Override
 	public int getId() {
-		return ((entryX & LOC_BITMASK) << LOC_BITS) | (entryZ & LOC_BITMASK);
+		return ((entryZ & LOC_BITMASK) << LOC_BITS) | (entryX & LOC_BITMASK);
 	}
 
 	@Override

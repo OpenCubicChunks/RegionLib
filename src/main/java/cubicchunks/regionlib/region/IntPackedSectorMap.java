@@ -110,7 +110,7 @@ public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>
 
 	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> IntPackedSectorMap<R, L> readOrCreate(
 		SeekableByteChannel file, int entriesPerRegion) throws IOException {
-		int entryMappingBytes = Integer.SIZE*entriesPerRegion;
+		int entryMappingBytes = Integer.BYTES*entriesPerRegion;
 		// add a new blank header if this file is new
 		if (file.size() < entryMappingBytes) {
 			file.write(ByteBuffer.allocate((int) (entryMappingBytes - file.size())));

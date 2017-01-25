@@ -90,6 +90,7 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 			throw new IllegalStateException("Already closed");
 		}
 		this.clearRegions();
+		this.sourceProvider.close();
 		this.closed = true;
 	}
 
@@ -109,9 +110,9 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	}
 
 	private void clearRegions() throws IOException {
-		Iterator<IRegion<R, L>> it = regionLocationToRegion.values().iterator();
+		Iterator<R> it = regionLocationToRegion.keySet().iterator();
 		while (it.hasNext()) {
-			it.next().close();
+			this.sourceProvider.returnRegion(it.next());
 			it.remove();
 		}
 	}
