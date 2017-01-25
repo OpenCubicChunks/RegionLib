@@ -26,13 +26,10 @@ package cubicchunks.regionlib;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.function.Function;
 
 import cubicchunks.regionlib.region.IRegion;
-import cubicchunks.regionlib.region.provider.CachedRegionProvider;
 import cubicchunks.regionlib.region.provider.IRegionProvider;
 
 /**
@@ -40,19 +37,19 @@ import cubicchunks.regionlib.region.provider.IRegionProvider;
  * keys that are close together/clumped<br/>
  * Example: Key could be an integer location in n-dimensional space, like Minecraft chunk locations
  *
- * @param <R> The region key type
- * @param <L> The location key type
+ * @param <S> This type
+ * @param <K> The location key type
  */
-public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements Closeable {
+public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>> implements Closeable {
 
-	private final IRegionProvider<R, L> regionProvider;
+	private final IRegionProvider<K> regionProvider;
 
 	/**
 	 * Creates a SaveSection with a customized IRegionProvider
 	 *
 	 * @param regionProvider The region provider
 	 */
-	public SaveSection(IRegionProvider<R, L> regionProvider) {
+	public SaveSection(IRegionProvider<K> regionProvider) {
 		this.regionProvider = regionProvider;
 	}
 
@@ -63,9 +60,9 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 * @param key The key
 	 * @param value The value to save
 	 */
-	public void save(L key, ByteBuffer value) throws IOException {
-		this.regionProvider.getRegion(key.getRegionKey()).writeValue(key, value);
-		this.regionProvider.returnRegion(key.getRegionKey());
+	public void save(K key, ByteBuffer value) throws IOException {
+		this.regionProvider.getRegion(key).writeValue(key, value);
+		this.regionProvider.returnRegion(key.getRegionName());
 	}
 
 	/**
@@ -76,11 +73,11 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 *
 	 * @return An Optional containing the value if it exists
 	 */
-	public Optional<ByteBuffer> load(L key) throws IOException {
-		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
+	public Optional<ByteBuffer> load(K key) throws IOException {
+		Optional<IRegion<K>> region = this.regionProvider.getRegionIfExists(key);
 		if (region.isPresent()) {
 			Optional<ByteBuffer> ret = region.get().readValue(key);
-			this.regionProvider.returnRegion(key.getRegionKey());
+			this.regionProvider.returnRegion(key.getRegionName());
 			return ret;
 		}
 		return Optional.empty();
@@ -90,15 +87,15 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
 	 * guaranteed to be listed.
 	 */
-	public Iterator<R> allRegions() throws IOException {
+	public Iterator<String> allRegions() throws IOException {
 		return this.regionProvider.allRegions();
 	}
 
-	public boolean hasEntry(L key) throws IOException {
-		Optional<IRegion<R, L>> region = this.regionProvider.getRegionIfExists(key.getRegionKey());
+	public boolean hasEntry(K key) throws IOException {
+		Optional<IRegion<K>> region = this.regionProvider.getRegionIfExists(key);
 		if (region.isPresent()) {
 			boolean ret = region.get().hasValue(key);
-			this.regionProvider.returnRegion(key.getRegionKey());
+			this.regionProvider.returnRegion(key.getRegionName());
 			return ret;
 		}
 		return false;
@@ -107,14 +104,5 @@ public class SaveSection<R extends IRegionKey<R, L>, L extends IKey<R, L>> imple
 	@Override
 	public void close() throws IOException {
 		this.regionProvider.close();
-	}
-
-	/**
-	 * Creates a SaveSection that stores its data in {@code directory}
-	 *
-	 * @param directory The place to store the region files
-	 */
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> SaveSection<R, L> createDefaultAt(Path directory, Function<String, R> nameToRegionKey) {
-		return new SaveSection(CachedRegionProvider.makeProvider(directory, nameToRegionKey));
 	}
 }

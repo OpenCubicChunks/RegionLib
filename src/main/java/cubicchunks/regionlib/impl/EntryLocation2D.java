@@ -28,7 +28,7 @@ import cubicchunks.regionlib.IKey;
 /**
  * A 2D implementation of IEntryLocation
  */
-public class EntryLocation2D implements IKey<RegionLocation2D, EntryLocation2D> {
+public class EntryLocation2D implements IKey<EntryLocation2D> {
 	public static final int LOC_BITS = 5;
 	public static final int LOC_BITMASK = (1 << LOC_BITS) - 1;
 	public static final int ENTRIES_PER_REGION = (1 << LOC_BITS)*(1 << LOC_BITS);
@@ -66,8 +66,14 @@ public class EntryLocation2D implements IKey<RegionLocation2D, EntryLocation2D> 
 		return result;
 	}
 
-	@Override public RegionLocation2D getRegionKey() {
-		return new RegionLocation2D(entryX >> LOC_BITS, entryZ >> LOC_BITS);
+	@Override public String getRegionName() {
+		int regX = entryX >> LOC_BITS;
+		int regZ = entryZ >> LOC_BITS;
+		return regX + "." + regZ + ".2dr";
+	}
+
+	@Override public int getKeyCount() {
+		return EntryLocation2D.ENTRIES_PER_REGION;
 	}
 
 	@Override public int getId() {
@@ -79,5 +85,15 @@ public class EntryLocation2D implements IKey<RegionLocation2D, EntryLocation2D> 
 			"entryX=" + entryX +
 			", entryZ=" + entryZ +
 			'}';
+	}
+
+	public static EntryLocation2D fromRelative(String name, int relativeX, int relativeZ) {
+		if (!name.matches("-?\\d+\\.-?\\d+\\.2dr")) {
+			throw new IllegalArgumentException("Invalid name " + name);
+		}
+		String[] s = name.split("\\.");
+		return new EntryLocation2D(
+			Integer.parseInt(s[0]) << LOC_BITS | relativeX,
+			Integer.parseInt(s[1]) << LOC_BITS | relativeZ);
 	}
 }

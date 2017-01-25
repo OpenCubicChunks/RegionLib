@@ -26,10 +26,8 @@ package cubicchunks.regionlib.region.header;
 import java.util.concurrent.TimeUnit;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 
-public class TimestampHeaderEntryProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>>
-	implements IHeaderDataEntryProvider<IntHeaderEntry, R, L> {
+public class TimestampHeaderEntryProvider<L extends IKey<L>> implements IHeaderDataEntryProvider<IntHeaderEntry, L> {
 
 	private final TimeUnit timeUnit;
 

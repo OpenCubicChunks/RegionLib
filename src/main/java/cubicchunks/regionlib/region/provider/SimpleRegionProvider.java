@@ -30,10 +30,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 import cubicchunks.regionlib.region.IRegion;
 import cubicchunks.regionlib.region.Region;
 
@@ -41,62 +39,58 @@ import cubicchunks.regionlib.region.Region;
  * A simple implementation of IRegionProvider, this is intended to be used together with CachedRegionProvider or other
  * caching implementation
  *
- * @param <R> The region key type
- * @param <L> The key type
+ * @param <K> The key type
  */
-public class SimpleRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegionProvider<R, L> {
+public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<K> {
 
 	private Path directory;
-	private RegionFactory<R, L> regionBuilder;
-	private Function<String, R> nameToRegionKey;
-	private Map<R, IRegion<R, L>> toReturn;
+	private RegionFactory<K> regionBuilder;
+	private Map<String, IRegion<K>> toReturn;
 
-	public SimpleRegionProvider(Path directory, RegionFactory<R, L> regionBuilder, Function<String, R> nameToRegionKey) {
+	public SimpleRegionProvider(Path directory, RegionFactory<K> regionBuilder) {
 		this.directory = directory;
 		this.regionBuilder = regionBuilder;
-		this.nameToRegionKey = nameToRegionKey;
 		this.toReturn = new HashMap<>();
 	}
 
-	@Override public IRegion<R, L> getRegion(R regionKey) throws IOException {
-		Path regionPath = directory.resolve(regionKey.getRegionName());
+	@Override public IRegion<K> getRegion(K key) throws IOException {
+		Path regionPath = directory.resolve(key.getRegionName());
 
-		IRegion<R, L> reg = regionBuilder.create(regionPath, regionKey);
+		IRegion<K> reg = regionBuilder.create(regionPath, key);
 
-		this.toReturn.put(regionKey, reg);
+		this.toReturn.put(key.getRegionName(), reg);
 		return reg;
 	}
 
-	@Override public Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException {
-		Path regionPath = directory.resolve(regionKey.getRegionName());
+	@Override public Optional<IRegion<K>> getRegionIfExists(K key) throws IOException {
+		Path regionPath = directory.resolve(key.getRegionName());
 		if (!Files.exists(regionPath)) {
 			return Optional.empty();
 		}
-		IRegion<R, L> reg = regionBuilder.create(regionPath, regionKey);
-		this.toReturn.put(regionKey, reg);
+		IRegion<K> reg = regionBuilder.create(regionPath, key);
+		this.toReturn.put(key.getRegionName(), reg);
 		return Optional.of(reg);
 	}
 
-	@Override public void returnRegion(R key) throws IOException {
-		IRegion<?, ?> reg = toReturn.remove(key);
+	@Override public void returnRegion(String name) throws IOException {
+		IRegion<?> reg = toReturn.remove(name);
 		if (reg == null) {
 			throw new IllegalArgumentException("No region found");
 		}
 		reg.close();
 	}
 
-	@Override public Iterator<R> allRegions() throws IOException {
+	@Override public Iterator<String> allRegions() throws IOException {
 		return Files.list(directory)
 			.map(Path::getFileName)
 			.map(Path::toString)
-			.map(nameToRegionKey::apply)
 			.iterator();
 	}
 
 	@Override public void close() throws IOException {
 		if (!toReturn.isEmpty()) {
 			System.err.println("Warning: leaked " + toReturn.size() + " regions! Closing them now");
-			for (IRegion<?, ?> r : toReturn.values()) {
+			for (IRegion<?> r : toReturn.values()) {
 				r.close();
 			}
 			toReturn.clear();
@@ -104,19 +98,18 @@ public class SimpleRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		}
 	}
 
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> SimpleRegionProvider<R, L> createDefault(Path directory, Function<String, R> nameToRegionKey, int sectorSize) {
+	public static <K extends IKey<K>> SimpleRegionProvider<K> createDefault(Path directory, int sectorSize) {
 		return new SimpleRegionProvider<>(directory, (p, r) ->
-			new Region.Builder<R, L>()
+			new Region.Builder<K>()
 				.setPath(p)
 				.setEntriesPerRegion(r.getKeyCount())
 				.setSectorSize(sectorSize)
-				.build(),
-			nameToRegionKey
+				.build()
 		);
 	}
 
 	@FunctionalInterface
-	public interface RegionFactory<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
-		IRegion<R, L> create(Path path, R key) throws IOException;
+	public interface RegionFactory<K extends IKey<K>> {
+		IRegion<K> create(Path path, K key) throws IOException;
 	}
 }

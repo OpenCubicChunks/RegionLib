@@ -29,22 +29,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 import cubicchunks.regionlib.region.IRegion;
 
 /**
  * An implementation of IRegionProvider that caches opened Regions
  *
- * @param <R> The region key type
- * @param <L> The key type
+ * @param <K> The key type
  */
-public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegionProvider<R, L> {
+public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<K> {
 
-	private IRegionProvider<R, L> sourceProvider;
-	private final Map<R, IRegion<R, L>> regionLocationToRegion;
+	private IRegionProvider<K> sourceProvider;
+	private final Map<String, IRegion<K>> regionLocationToRegion;
 	private int maxCacheSize;
 
 	private boolean closed;
@@ -55,33 +52,33 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	 * @param sourceProvider provider used as source of regions
 	 * @param maxCacheSize The maximum number of cached region files
 	 */
-	public CachedRegionProvider(IRegionProvider<R, L> sourceProvider, int maxCacheSize) {
+	public CachedRegionProvider(IRegionProvider<K> sourceProvider, int maxCacheSize) {
 		this.sourceProvider = sourceProvider;
 		this.regionLocationToRegion = new HashMap<>(maxCacheSize*2); // methods below are synchronized anyway, no need for concurrent map
 		this.maxCacheSize = maxCacheSize;
 	}
 
 	@Override
-	public synchronized IRegion<R, L> getRegion(R regionKey) throws IOException {
+	public synchronized IRegion<K> getRegion(K key) throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
 		}
-		return getRegion(regionKey, true); // it can't be null here
+		return getRegion(key, true); // it can't be null here
 	}
 
 	@Override
-	public synchronized Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException {
+	public synchronized Optional<IRegion<K>> getRegionIfExists(K key) throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
 		}
-		return Optional.ofNullable(getRegion(regionKey, false));
+		return Optional.ofNullable(getRegion(key, false));
 	}
 
-	@Override public void returnRegion(R key) {
+	@Override public void returnRegion(String name) {
 		// no-op
 	}
 
-	@Override public Iterator<R> allRegions() throws IOException {
+	@Override public Iterator<String> allRegions() throws IOException {
 		return sourceProvider.allRegions();
 	}
 
@@ -94,23 +91,23 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 		this.closed = true;
 	}
 
-	private synchronized IRegion<R, L> getRegion(R location, boolean canCreate) throws IOException {
+	private synchronized IRegion<K> getRegion(K location, boolean canCreate) throws IOException {
 		if (regionLocationToRegion.size() > maxCacheSize) {
 			this.clearRegions();
 		}
 
-		IRegion<R, L> region = regionLocationToRegion.get(location);
+		IRegion<K> region = regionLocationToRegion.get(location.getRegionName());
 		if (region == null) {
 			region = canCreate ? sourceProvider.getRegion(location) : sourceProvider.getRegionIfExists(location).orElse(null);
 			if (region != null) {
-				regionLocationToRegion.put(location, region);
+				regionLocationToRegion.put(location.getRegionName(), region);
 			}
 		}
 		return region;
 	}
 
 	private void clearRegions() throws IOException {
-		Iterator<R> it = regionLocationToRegion.keySet().iterator();
+		Iterator<String> it = regionLocationToRegion.keySet().iterator();
 		while (it.hasNext()) {
 			this.sourceProvider.returnRegion(it.next());
 			it.remove();
@@ -122,9 +119,9 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	 *
 	 * @param directory The directory that region files are stored in
 	 */
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(
-		Path directory, Function<String, R> nameToRegionKey) {
-		return makeProvider(directory, nameToRegionKey, 512, 128);
+	public static <L extends IKey<L>> CachedRegionProvider<L> makeProvider(
+		Path directory) {
+		return makeProvider(directory, 512, 128);
 	}
 
 	/**
@@ -135,8 +132,7 @@ public class CachedRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, 
 	 * @param sectorSize The sector size used in the region files
 	 * @param maxSize The maximum number of cached region files
 	 */
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> CachedRegionProvider<R, L> makeProvider(
-		Path directory, Function<String, R> nameToRegionKey, int sectorSize, int maxSize) {
-		return new CachedRegionProvider<R, L>(SimpleRegionProvider.createDefault(directory, nameToRegionKey, sectorSize), maxSize);
+	public static <K extends IKey<K>> CachedRegionProvider<K> makeProvider(Path directory, int sectorSize, int maxSize) {
+		return new CachedRegionProvider<K>(SimpleRegionProvider.createDefault(directory, sectorSize), maxSize);
 	}
 }

@@ -34,7 +34,6 @@ import java.util.Optional;
 
 import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 import cubicchunks.regionlib.region.header.IHeaderDataEntryProvider;
 import cubicchunks.regionlib.util.WrappedException;
 
@@ -45,20 +44,19 @@ import static java.nio.file.StandardOpenOption.WRITE;
 /**
  * A basic region implementation
  *
- * @param <R> The region key type
- * @param <L> The key type
+ * @param <K> The key type
  */
-public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements IRegion<R, L> {
+public class Region<K extends IKey<K>> implements IRegion<K> {
 
-	private final IKeyIdToSectorMap<?, ?, R, L> sectorMap;
-	private final RegionSectorTracker<R, L> regionSectorTracker;
+	private final IKeyIdToSectorMap<?, ?, K> sectorMap;
+	private final RegionSectorTracker<K> regionSectorTracker;
 
 	private final SeekableByteChannel file;
-	private List<IHeaderDataEntryProvider<?, R, L>> headerEntryProviders;
+	private List<IHeaderDataEntryProvider<?, K>> headerEntryProviders;
 	private final int sectorSize;
 
-	private Region(SeekableByteChannel file, IntPackedSectorMap<R, L> sectorMap, RegionSectorTracker<R, L> sectorTracker,
-	               List<IHeaderDataEntryProvider<?, R, L>> headerEntryProviders, int sectorSize) throws IOException {
+	private Region(SeekableByteChannel file, IntPackedSectorMap<K> sectorMap, RegionSectorTracker<K> sectorTracker,
+	               List<IHeaderDataEntryProvider<?, K>> headerEntryProviders, int sectorSize) throws IOException {
 		this.file = file;
 		this.headerEntryProviders = headerEntryProviders;
 		this.sectorSize = sectorSize;
@@ -66,7 +64,7 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		this.regionSectorTracker = sectorTracker;
 	}
 
-	@Override public synchronized void writeValue(L key, ByteBuffer value) throws IOException {
+	@Override public synchronized void writeValue(K key, ByteBuffer value) throws IOException {
 		int size = value.remaining();
 		int sizeWithSizeInfo = size + Integer.BYTES;
 		int numSectors = getSectorNumber(sizeWithSizeInfo);
@@ -78,9 +76,9 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		file.write(value);
 
 		final int id = key.getId();
-		final int sectorMapEntries = key.getRegionKey().getKeyCount();
+		final int sectorMapEntries = key.getKeyCount();
 		int currentHeaderBytes = 0;
-		for (IHeaderDataEntryProvider<?, R, L> prov : headerEntryProviders) {
+		for (IHeaderDataEntryProvider<?, K> prov : headerEntryProviders) {
 			ByteBuffer buf = ByteBuffer.allocate(prov.getEntryByteCount());
 			prov.apply(key).write(buf);
 			buf.flip();
@@ -89,7 +87,7 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readValue(L key) throws IOException {
+	@Override public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
 		// a hack because Optional can't throw checked exceptions
 		try {
 			return sectorMap.getEntryLocation(key).flatMap(loc -> {
@@ -122,7 +120,7 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 	/**
 	 * Returns true if something was stored there before within this region.
 	 */
-	@Override public synchronized boolean hasValue(L key) {
+	@Override public synchronized boolean hasValue(K key) {
 		return sectorMap.getEntryLocation(key).isPresent();
 	}
 
@@ -139,45 +137,45 @@ public class Region<R extends IRegionKey<R, L>, L extends IKey<R, L>> implements
 		return -Math.floorDiv(-x, y);
 	}
 
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> Builder<R, L> builder() {
+	public static <L extends IKey<L>> Builder<L> builder() {
 		return new Builder<>();
 	}
 
-	public static class Builder<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
+	public static class Builder<K extends IKey<K>> {
 
 		private Path path;
 		private int entriesPerRegion;
 		private int sectorSize = 512;
 		private List<IHeaderDataEntryProvider> headerEntryProviders = new ArrayList<>();
 
-		public Builder<R, L> setPath(Path path) {
+		public Builder<K> setPath(Path path) {
 			this.path = path;
 			return this;
 		}
 
-		public Builder<R, L> setEntriesPerRegion(int entriesPerRegion) {
+		public Builder<K> setEntriesPerRegion(int entriesPerRegion) {
 			this.entriesPerRegion = entriesPerRegion;
 			return this;
 		}
 
-		public Builder<R, L> setSectorSize(int sectorSize) {
+		public Builder<K> setSectorSize(int sectorSize) {
 			this.sectorSize = sectorSize;
 			return this;
 		}
 
-		public Builder<R, L> addHeaderEntry(IHeaderDataEntryProvider<?, R, L> headerEntry) {
+		public Builder<K> addHeaderEntry(IHeaderDataEntryProvider<?, K> headerEntry) {
 			headerEntryProviders.add(headerEntry);
 			return this;
 		}
 
-		public Region<R, L> build() throws IOException {
+		public Region<K> build() throws IOException {
 			SeekableByteChannel file = Files.newByteChannel(path, CREATE, READ, WRITE);
 
 			int entryMappingBytes = entriesPerRegion*Integer.BYTES;
 			int entryMapSectors = ceilDiv(entryMappingBytes, sectorSize);
 
-			IntPackedSectorMap<R, L> sectorMap = IntPackedSectorMap.readOrCreate(file, entriesPerRegion);
-			RegionSectorTracker<R, L> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
+			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, entriesPerRegion);
+			RegionSectorTracker<K> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
 			this.headerEntryProviders.add(0, sectorMap.headerEntryProvider());
 			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize);
 		}

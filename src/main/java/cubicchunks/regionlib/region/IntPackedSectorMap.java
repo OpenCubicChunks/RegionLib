@@ -30,12 +30,11 @@ import java.util.Iterator;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 import cubicchunks.regionlib.region.header.EntryLocationHeaderEntryProvider;
 import cubicchunks.regionlib.region.header.IntHeaderEntry;
 
-public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>>
-	implements IKeyIdToSectorMap<IntHeaderEntry, EntryLocationHeaderEntryProvider<R, L>, R, L> {
+public class IntPackedSectorMap<K extends IKey<K>>
+	implements IKeyIdToSectorMap<IntHeaderEntry, EntryLocationHeaderEntryProvider<K>, K> {
 
 	private static final int SIZE_BITS = 8;
 	private static final int OFFSET_BITS = Integer.SIZE - SIZE_BITS;
@@ -50,7 +49,7 @@ public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>
 		this.entrySectorOffsets = data;
 	}
 
-	@Override public Optional<RegionEntryLocation> getEntryLocation(L key) {
+	@Override public Optional<RegionEntryLocation> getEntryLocation(K key) {
 		int packed = entrySectorOffsets[key.getId()];
 		if (packed == 0) {
 			return Optional.empty();
@@ -58,7 +57,7 @@ public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>
 		return Optional.of(new RegionEntryLocation(unpackOffset(packed), unpackSize(packed)));
 	}
 
-	@Override public void setOffsetAndSize(L key, RegionEntryLocation location) throws IOException {
+	@Override public void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException {
 		entrySectorOffsets[key.getId()] = packed(location);
 	}
 
@@ -86,7 +85,7 @@ public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>
 		};
 	}
 
-	@Override public EntryLocationHeaderEntryProvider<R, L> headerEntryProvider() {
+	@Override public EntryLocationHeaderEntryProvider<K> headerEntryProvider() {
 		return new EntryLocationHeaderEntryProvider<>(this, IntPackedSectorMap::packed);
 	}
 
@@ -108,7 +107,7 @@ public class IntPackedSectorMap<R extends IRegionKey<R, L>, L extends IKey<R, L>
 		return location.getSize() | (location.getOffset() << SIZE_BITS);
 	}
 
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> IntPackedSectorMap<R, L> readOrCreate(
+	public static <L extends IKey<L>> IntPackedSectorMap<L> readOrCreate(
 		SeekableByteChannel file, int entriesPerRegion) throws IOException {
 		int entryMappingBytes = Integer.BYTES*entriesPerRegion;
 		// add a new blank header if this file is new

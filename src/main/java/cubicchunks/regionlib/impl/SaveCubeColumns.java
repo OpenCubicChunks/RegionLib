@@ -30,18 +30,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
-import cubicchunks.regionlib.SaveSection;
+import cubicchunks.regionlib.impl.save.SaveSection2D;
+import cubicchunks.regionlib.impl.save.SaveSection3D;
 
 /**
  * A save for 3d and 2d structures, like Cubes and Columns in CubicChunks.
  */
 public class SaveCubeColumns implements Closeable {
 
-	private final SaveSection<RegionLocation2D, EntryLocation2D> saveSection2D;
-	private final SaveSection<RegionLocation3D, EntryLocation3D> saveSection3D;
+	private final SaveSection2D saveSection2D;
+	private final SaveSection3D saveSection3D;
 
-	public SaveCubeColumns(SaveSection<RegionLocation2D, EntryLocation2D> saveSection2D,
-	                       SaveSection<RegionLocation3D, EntryLocation3D> saveSection3D) {
+	public SaveCubeColumns(SaveSection2D saveSection2D, SaveSection3D saveSection3D) {
 		this.saveSection2D = saveSection2D;
 		this.saveSection3D = saveSection3D;
 	}
@@ -94,8 +94,8 @@ public class SaveCubeColumns implements Closeable {
 		Path part3d = directory.resolve("region3d");
 		Files.createDirectories(part3d);
 
-		SaveSection<RegionLocation2D, EntryLocation2D> section2d = SaveSection.createDefaultAt(part2d, RegionLocation2D::fromName);
-		SaveSection<RegionLocation3D, EntryLocation3D> section3d = SaveSection.createDefaultAt(part3d, RegionLocation3D::fromName);
+		SaveSection2D section2d = SaveSection2D.createAt(part2d);
+		SaveSection3D section3d = SaveSection3D.createAt(part3d);
 
 		return new SaveCubeColumns(section2d, section3d);
 	}

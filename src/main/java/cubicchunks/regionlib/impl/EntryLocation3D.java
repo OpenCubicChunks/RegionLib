@@ -28,7 +28,7 @@ import cubicchunks.regionlib.IKey;
 /**
  * A 3D implementation of IEntryLocation
  */
-public class EntryLocation3D implements IKey<RegionLocation3D, EntryLocation3D> {
+public class EntryLocation3D implements IKey<EntryLocation3D> {
 	private static final int LOC_BITS = 4;
 	private static final int LOC_BITMASK = (1 << LOC_BITS) - 1;
 	public static final int ENTRIES_PER_REGION = (1 << LOC_BITS)*(1 << LOC_BITS)*(1 << LOC_BITS);
@@ -74,8 +74,16 @@ public class EntryLocation3D implements IKey<RegionLocation3D, EntryLocation3D> 
 		return result;
 	}
 
-	@Override public RegionLocation3D getRegionKey() {
-		return new RegionLocation3D(entryX >> LOC_BITS, entryY >> LOC_BITS, entryZ >> LOC_BITS);
+	@Override public String getRegionName() {
+		int regX = entryX >> LOC_BITS;
+		int regY = entryY >> LOC_BITS;
+		int regZ = entryZ >> LOC_BITS;
+
+		return regX + "." + regY + "." + regZ + ".3dr";
+	}
+
+	@Override public int getKeyCount() {
+		return ENTRIES_PER_REGION;
 	}
 
 	@Override public int getId() {
@@ -88,5 +96,16 @@ public class EntryLocation3D implements IKey<RegionLocation3D, EntryLocation3D> 
 			", entryY=" + entryY +
 			", entryZ=" + entryZ +
 			'}';
+	}
+
+	public static EntryLocation3D fromRelative(String name, int relativeX, int relativeY, int relativeZ) {
+		if (!name.matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
+			throw new IllegalArgumentException("Invalid name " + name);
+		}
+		String[] s = name.split("\\.");
+		return new EntryLocation3D(
+			Integer.parseInt(s[0]) << LOC_BITS | relativeX,
+			Integer.parseInt(s[1]) << LOC_BITS | relativeY,
+			Integer.parseInt(s[2]) << LOC_BITS | relativeZ);
 	}
 }

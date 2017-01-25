@@ -29,25 +29,23 @@ import java.util.Iterator;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 import cubicchunks.regionlib.region.IRegion;
 
 /**
  * Acts as a source of regions (creation/loading/caching)
  *
- * @param <R> The region key type
- * @param <L> The key type
+ * @param <K> The key type
  */
-public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L>> extends Closeable {
+public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 
 	/**
 	 * Gets an IRegion at a given region key, or create one if it does not exist
 	 *
-	 * @param regionKey The key for the IRegion
+	 * @param key The key for the IRegion
 	 *
 	 * @return The IRegion at {@code regionKey}
 	 */
-	IRegion<R, L> getRegion(R regionKey) throws IOException;
+	IRegion<K> getRegion(K key) throws IOException;
 
 	/**
 	 * Gets an IRegion at a given region key
@@ -56,18 +54,19 @@ public interface IRegionProvider<R extends IRegionKey<R, L>, L extends IKey<R, L
 	 *
 	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
 	 */
-	Optional<IRegion<R, L>> getRegionIfExists(R regionKey) throws IOException;
+	Optional<IRegion<K>> getRegionIfExists(K regionKey) throws IOException;
 
 	/**
 	 * After region from getRegion or getRegionIfExists is no longer needed, this method should be called to ensure that
 	 * data is written to disk when close() is called. State opf the given region after using this method may be defined
 	 * by implementation.
 	 */
-	void returnRegion(R key) throws IOException;
+	@Deprecated
+	void returnRegion(String name) throws IOException;
 
 	/**
 	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
 	 * guaranteed to be listed.
 	 */
-	Iterator<R> allRegions() throws IOException;
+	Iterator<String> allRegions() throws IOException;
 }

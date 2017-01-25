@@ -29,16 +29,14 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 
 /**
  * Stores all values within a fixed measure (area/volume/what ever) of keys.<br/>
  * Regions are used as a way of *chunking* the database.
  *
- * @param <R> The IRegionLocation type
- * @param <L> The IEntryLocation type
+ * @param <K> The IKey type
  */
-public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> extends Closeable {
+public interface IRegion<K extends IKey<K>> extends Closeable {
 
 	/**
 	 * Stores a value at a key within this region
@@ -46,7 +44,7 @@ public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> exten
 	 * @param key A key within this region
 	 * @param value The value to store
 	 */
-	void writeValue(L key, ByteBuffer value) throws IOException;
+	void writeValue(K key, ByteBuffer value) throws IOException;
 
 	/**
 	 * Loads a value at a key if there was something stored there before, within this region
@@ -55,10 +53,10 @@ public interface IRegion<R extends IRegionKey<R, L>, L extends IKey<R, L>> exten
 	 *
 	 * @return The value at {@code key} if it exists
 	 */
-	Optional<ByteBuffer> readValue(L key) throws IOException;
+	Optional<ByteBuffer> readValue(K key) throws IOException;
 
 	/**
 	 * Returns true if something was stored there before within this region.
 	 */
-	boolean hasValue(L key);
+	boolean hasValue(K key);
 }

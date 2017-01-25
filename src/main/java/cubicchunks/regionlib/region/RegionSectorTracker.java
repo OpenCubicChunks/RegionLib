@@ -29,14 +29,13 @@ import java.util.BitSet;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.IRegionKey;
 
-public class RegionSectorTracker<R extends IRegionKey<R, L>, L extends IKey<R, L>> {
+public class RegionSectorTracker<K extends IKey<K>> {
 
 	private final BitSet usedSectors;
-	private IKeyIdToSectorMap<?, ?, R, L> sectorMap;
+	private IKeyIdToSectorMap<?, ?, K> sectorMap;
 
-	public RegionSectorTracker(BitSet usedSectors, IKeyIdToSectorMap<?, ?, R, L> sectorMap) {
+	public RegionSectorTracker(BitSet usedSectors, IKeyIdToSectorMap<?, ?, K> sectorMap) {
 		this.usedSectors = usedSectors;
 		this.sectorMap = sectorMap;
 	}
@@ -44,7 +43,7 @@ public class RegionSectorTracker<R extends IRegionKey<R, L>, L extends IKey<R, L
 	/**
 	 * Returns offset for the given key and requestedSize, and reserves these sectors
 	 */
-	public RegionEntryLocation reserveForKey(L key, int requestedSize) throws IOException {
+	public RegionEntryLocation reserveForKey(K key, int requestedSize) throws IOException {
 		Optional<RegionEntryLocation> existing = sectorMap.getEntryLocation(key);
 		RegionEntryLocation found = findSectorFor(existing.orElse(null), requestedSize);
 		this.sectorMap.setOffsetAndSize(key, found);
@@ -118,8 +117,8 @@ public class RegionSectorTracker<R extends IRegionKey<R, L>, L extends IKey<R, L
 		return !usedSectors.get(sector);
 	}
 
-	public static <R extends IRegionKey<R, L>, L extends IKey<R, L>> RegionSectorTracker<R, L> fromFile(
-		SeekableByteChannel file, IKeyIdToSectorMap<?, ?, R, L> sectorMap, int reservedSectors, int sectorSize) throws IOException {
+	public static <L extends IKey<L>> RegionSectorTracker<L> fromFile(
+		SeekableByteChannel file, IKeyIdToSectorMap<?, ?, L> sectorMap, int reservedSectors, int sectorSize) throws IOException {
 		// initialize usedSectors and make the header sectors as used
 		BitSet usedSectors = new BitSet(Math.max((int) (file.size()/sectorSize), reservedSectors));
 		for (int i = 0; i < reservedSectors; i++) {

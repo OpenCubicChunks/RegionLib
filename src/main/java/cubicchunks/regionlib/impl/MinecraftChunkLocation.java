@@ -25,7 +25,7 @@ package cubicchunks.regionlib.impl;
 
 import cubicchunks.regionlib.IKey;
 
-public class MinecraftChunkLocation implements IKey<MinecraftRegionLocation, MinecraftChunkLocation> {
+public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 
 	public static final int LOC_BITS = 5;
 	public static final int LOC_BITMASK = (1 << LOC_BITS) - 1;
@@ -73,8 +73,15 @@ public class MinecraftChunkLocation implements IKey<MinecraftRegionLocation, Min
 	}
 
 	@Override
-	public MinecraftRegionLocation getRegionKey() {
-		return new MinecraftRegionLocation(entryX >> LOC_BITS, entryZ >> LOC_BITS);
+	public String getRegionName() {
+		int regX = entryX >> LOC_BITS;
+		int regZ = entryZ >> LOC_BITS;
+		return "r." + regX + "." + regZ + ".mca";
+	}
+
+	@Override
+	public int getKeyCount() {
+		return ENTRIES_PER_REGION;
 	}
 
 	@Override
@@ -88,5 +95,15 @@ public class MinecraftChunkLocation implements IKey<MinecraftRegionLocation, Min
 			"entryX=" + entryX +
 			", entryZ=" + entryZ +
 			'}';
+	}
+
+	public static MinecraftChunkLocation fromRelative(String name, int relativeX, int relativeZ) {
+		if (!name.matches("r\\.-?\\d+\\.-?\\d+\\.mca")) {
+			throw new IllegalArgumentException("Invalid name " + name);
+		}
+		String[] s = name.split("\\.");
+		return new MinecraftChunkLocation(
+			Integer.parseInt(s[1]) << LOC_BITS | relativeX,
+			Integer.parseInt(s[2]) << LOC_BITS | relativeZ);
 	}
 }
