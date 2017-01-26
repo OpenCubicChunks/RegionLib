@@ -144,6 +144,8 @@ public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<
 				regionLocationToRegion.put(location.getRegionName(), region);
 				cons.accept(region);
 			}
+		} else {
+			cons.accept(region);
 		}
 	}
 
