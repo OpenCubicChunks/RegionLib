@@ -25,11 +25,12 @@ package cubicchunks.regionlib.region.provider;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.region.IRegion;
+import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CheckedFunction;
 
 /**
  * Acts as a source of regions (creation/loading/caching)
@@ -39,7 +40,46 @@ import cubicchunks.regionlib.region.IRegion;
 public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 
 	/**
-	 * Gets an IRegion at a given region key, or create one if it does not exist
+	 * Calls the given consumer with region at that location. Creates new region if one doesn't exist yet.
+	 * The region will be closed automatically as needed.
+	 *
+	 * @param key The key for the IRegion
+	 * @param consumer Consumer that accepts the IRegion
+	 */
+	void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
+
+	/**
+	 * Calls the given consumer with region at that location. Doesn't create new region if one doesn't exist yet.
+	 * The region will be closed automatically as needed.
+	 *
+	 * @param key The key for the IRegion
+	 *
+	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
+	 */
+	<R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
+
+	/**
+	 * Calls the given function with region at that location and returns value from that function. Creates new region if
+	 * one doesn't exist yet. The region will be closed automatically as needed.
+	 *
+	 * @param key The key for the IRegion
+	 */
+	<R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
+
+	/**
+	 * Calls the given function with region at that location and returns value from that function.. Doesn't create new
+	 * region if one doesn't exist yet. The region will be closed automatically as needed.
+	 *
+	 * @param key The key for the IRegion
+	 *
+	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
+	 */
+	void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
+
+	/**
+	 * Gets an IRegion at a given region key, or create one if it does not exist. The region will not be closed
+	 * automatically. Region instance returned by this method won't be returned again, instead new one will be created
+	 * (not cached).
 	 *
 	 * @param key The key for the IRegion
 	 *
@@ -48,25 +88,18 @@ public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 	IRegion<K> getRegion(K key) throws IOException;
 
 	/**
-	 * Gets an IRegion at a given region key
+	 * Gets an IRegion at a given region key, creates new one if it doesn't exist. The region will not be closed
+	 * automatically. Region instance returned by this method won't be returned again, instead new one will be created
+	 * (not cached).
 	 *
-	 * @param regionKey The key for the IRegion
+	 * @param key The key for the IRegion
 	 *
 	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
 	 */
-	Optional<IRegion<K>> getRegionIfExists(K regionKey) throws IOException;
+	Optional<IRegion<K>> getExistingRegion(K key) throws IOException;
 
 	/**
-	 * After region from getRegion or getRegionIfExists is no longer needed, this method should be called to ensure that
-	 * data is written to disk when close() is called. State opf the given region after using this method may be defined
-	 * by implementation.
+	 * Calls the given consumer for all existing region names.
 	 */
-	@Deprecated
-	void returnRegion(String name) throws IOException;
-
-	/**
-	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
-	 * guaranteed to be listed.
-	 */
-	Iterator<String> allRegions() throws IOException;
+	void forAllRegions(CheckedConsumer<? super String, IOException> consumer) throws IOException;
 }

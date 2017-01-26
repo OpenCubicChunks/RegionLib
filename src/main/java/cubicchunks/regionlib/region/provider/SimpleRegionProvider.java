@@ -26,14 +26,14 @@ package cubicchunks.regionlib.region.provider;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.region.IRegion;
 import cubicchunks.regionlib.region.Region;
+import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CheckedFunction;
 
 /**
  * A simple implementation of IRegionProvider, this is intended to be used together with CachedRegionProvider or other
@@ -45,57 +45,76 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 
 	private Path directory;
 	private RegionFactory<K> regionBuilder;
-	private Map<String, IRegion<K>> toReturn;
 
 	public SimpleRegionProvider(Path directory, RegionFactory<K> regionBuilder) {
 		this.directory = directory;
 		this.regionBuilder = regionBuilder;
-		this.toReturn = new HashMap<>();
+	}
+
+	@Override
+	public <R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
+		IRegion<K> r = getExistingRegion(key).orElse(null);
+		if (r != null) {
+			R ret = func.apply(r);
+			r.close();
+			return Optional.of(ret);
+		}
+		return Optional.empty();
+	}
+
+	@Override
+	public <R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
+		IRegion<K> r = getRegion(key);
+		R ret = func.apply(r);
+		r.close();
+		return ret;
+	}
+
+	@Override
+	public void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException {
+		IRegion<K> r = getRegion(key);
+		consumer.accept(r);
+		r.close();
+	}
+
+	@Override
+	public void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException {
+		IRegion<K> r = getExistingRegion(key).orElse(null);
+		if (r != null) {
+			consumer.accept(r);
+			r.close();
+		}
 	}
 
 	@Override public IRegion<K> getRegion(K key) throws IOException {
 		Path regionPath = directory.resolve(key.getRegionName());
-
-		IRegion<K> reg = regionBuilder.create(regionPath, key);
-
-		this.toReturn.put(key.getRegionName(), reg);
-		return reg;
+		return regionBuilder.create(regionPath, key);
 	}
 
-	@Override public Optional<IRegion<K>> getRegionIfExists(K key) throws IOException {
+	@Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
 		Path regionPath = directory.resolve(key.getRegionName());
 		if (!Files.exists(regionPath)) {
 			return Optional.empty();
 		}
 		IRegion<K> reg = regionBuilder.create(regionPath, key);
-		this.toReturn.put(key.getRegionName(), reg);
 		return Optional.of(reg);
 	}
 
-	@Override public void returnRegion(String name) throws IOException {
-		IRegion<?> reg = toReturn.remove(name);
-		if (reg == null) {
-			throw new IllegalArgumentException("No region found");
+	@Override public void forAllRegions(CheckedConsumer<? super String, IOException> consumer) throws IOException {
+		Iterator<String> it = allRegions();
+		while (it.hasNext()) {
+			consumer.accept(it.next());
 		}
-		reg.close();
 	}
 
-	@Override public Iterator<String> allRegions() throws IOException {
+	protected Iterator<String> allRegions() throws IOException {
 		return Files.list(directory)
 			.map(Path::getFileName)
 			.map(Path::toString)
 			.iterator();
 	}
 
-	@Override public void close() throws IOException {
-		if (!toReturn.isEmpty()) {
-			System.err.println("Warning: leaked " + toReturn.size() + " regions! Closing them now");
-			for (IRegion<?> r : toReturn.values()) {
-				r.close();
-			}
-			toReturn.clear();
-			toReturn = null;
-		}
+	@Override public void close() {
 	}
 
 	public static <K extends IKey<K>> SimpleRegionProvider<K> createDefault(Path directory, int sectorSize) {

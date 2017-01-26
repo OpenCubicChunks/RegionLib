@@ -26,11 +26,10 @@ package cubicchunks.regionlib;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.Optional;
 
-import cubicchunks.regionlib.region.IRegion;
 import cubicchunks.regionlib.region.provider.IRegionProvider;
+import cubicchunks.regionlib.util.CheckedConsumer;
 
 /**
  * A low level key/value database optimized for storing
@@ -61,8 +60,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	 * @param value The value to save
 	 */
 	public void save(K key, ByteBuffer value) throws IOException {
-		this.regionProvider.getRegion(key).writeValue(key, value);
-		this.regionProvider.returnRegion(key.getRegionName());
+		this.regionProvider.forRegion(key, r -> r.writeValue(key, value));
 	}
 
 	/**
@@ -74,31 +72,21 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	 * @return An Optional containing the value if it exists
 	 */
 	public Optional<ByteBuffer> load(K key) throws IOException {
-		Optional<IRegion<K>> region = this.regionProvider.getRegionIfExists(key);
-		if (region.isPresent()) {
-			Optional<ByteBuffer> ret = region.get().readValue(key);
-			this.regionProvider.returnRegion(key.getRegionName());
-			return ret;
-		}
-		return Optional.empty();
+		return this.regionProvider.fromExistingRegion(key,
+			r -> r.readValue(key)
+		).flatMap(x -> x);
 	}
 
 	/**
 	 * Returns iterator with all currently existing regions. Regions created after this method is called are not
 	 * guaranteed to be listed.
 	 */
-	public Iterator<String> allRegions() throws IOException {
-		return this.regionProvider.allRegions();
+	public void forAllRegions(CheckedConsumer<? super String, IOException> cons) throws IOException {
+		this.regionProvider.forAllRegions(cons);
 	}
 
 	public boolean hasEntry(K key) throws IOException {
-		Optional<IRegion<K>> region = this.regionProvider.getRegionIfExists(key);
-		if (region.isPresent()) {
-			boolean ret = region.get().hasValue(key);
-			this.regionProvider.returnRegion(key.getRegionName());
-			return ret;
-		}
-		return false;
+		return this.regionProvider.fromExistingRegion(key, r -> r.hasValue(key)).orElse(false);
 	}
 
 	@Override

@@ -32,6 +32,8 @@ import java.util.Optional;
 
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.region.IRegion;
+import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CheckedFunction;
 
 /**
  * An implementation of IRegionProvider that caches opened Regions
@@ -59,27 +61,62 @@ public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<
 	}
 
 	@Override
-	public synchronized IRegion<K> getRegion(K key) throws IOException {
+	public <R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
 		}
-		return getRegion(key, true); // it can't be null here
+		return fromRegion(key, func, false);
 	}
 
 	@Override
-	public synchronized Optional<IRegion<K>> getRegionIfExists(K key) throws IOException {
+	public <R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
 		}
-		return Optional.ofNullable(getRegion(key, false));
+		return fromRegion(key, func, true).get();
 	}
 
-	@Override public void returnRegion(String name) {
-		// no-op
+	@Override
+	public synchronized void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> cons) throws IOException {
+		if (closed) {
+			throw new IllegalStateException("Already closed");
+		}
+		forRegion(key, cons, true);
 	}
 
-	@Override public Iterator<String> allRegions() throws IOException {
-		return sourceProvider.allRegions();
+	@Override
+	public synchronized void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> cons) throws IOException {
+		if (closed) {
+			throw new IllegalStateException("Already closed");
+		}
+		forRegion(key, cons, false);
+	}
+
+	@Override public IRegion<K> getRegion(K key) throws IOException {
+		IRegion<K> r = regionLocationToRegion.get(key.getRegionName());
+		if (r != null) {
+			regionLocationToRegion.remove(key.getRegionName());
+			return r;
+		} else {
+			return sourceProvider.getRegion(key);
+		}
+	}
+
+	@Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
+		IRegion<K> r = regionLocationToRegion.get(key.getRegionName());
+		if (r != null) {
+			regionLocationToRegion.remove(key.getRegionName());
+			return Optional.of(r);
+		} else {
+			return sourceProvider.getExistingRegion(key);
+		}
+	}
+
+	@Override public void forAllRegions(CheckedConsumer<? super String, IOException> cons) throws IOException {
+		if (closed) {
+			throw new IllegalStateException("Already closed");
+		}
+		sourceProvider.forAllRegions(cons);
 	}
 
 	@Override public void close() throws IOException {
@@ -91,27 +128,54 @@ public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<
 		this.closed = true;
 	}
 
-	private synchronized IRegion<K> getRegion(K location, boolean canCreate) throws IOException {
+	private synchronized void forRegion(K location, CheckedConsumer<? super IRegion<K>, IOException> cons, boolean canCreate) throws IOException {
 		if (regionLocationToRegion.size() > maxCacheSize) {
 			this.clearRegions();
 		}
 
 		IRegion<K> region = regionLocationToRegion.get(location.getRegionName());
 		if (region == null) {
-			region = canCreate ? sourceProvider.getRegion(location) : sourceProvider.getRegionIfExists(location).orElse(null);
+			if (canCreate) {
+				region = sourceProvider.getRegion(location);
+			} else {
+				region = sourceProvider.getExistingRegion(location).orElse(null);
+			}
 			if (region != null) {
 				regionLocationToRegion.put(location.getRegionName(), region);
+				cons.accept(region);
 			}
 		}
-		return region;
+	}
+
+	private synchronized <R> Optional<R> fromRegion(K location, CheckedFunction<? super IRegion<K>, R, IOException> func, boolean canCreate) throws IOException {
+		if (regionLocationToRegion.size() > maxCacheSize) {
+			this.clearRegions();
+		}
+
+		IRegion<K> region = regionLocationToRegion.get(location.getRegionName());
+		if (region == null) {
+			if (canCreate) {
+				region = sourceProvider.getRegion(location);
+			} else {
+				region = sourceProvider.getExistingRegion(location).orElse(null);
+			}
+			if (region != null) {
+				regionLocationToRegion.put(location.getRegionName(), region);
+				return Optional.of(func.apply(region));
+			}
+		}
+		if (region == null) {
+			return Optional.empty();
+		}
+		return Optional.of(func.apply(region));
 	}
 
 	private void clearRegions() throws IOException {
-		Iterator<String> it = regionLocationToRegion.keySet().iterator();
+		Iterator<IRegion<K>> it = regionLocationToRegion.values().iterator();
 		while (it.hasNext()) {
-			this.sourceProvider.returnRegion(it.next());
-			it.remove();
+			it.next().close();
 		}
+		regionLocationToRegion.clear();
 	}
 
 	/**
