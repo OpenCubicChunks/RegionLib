@@ -1,6 +1,7 @@
 import nl.javadude.gradle.plugins.license.LicenseExtension
 import nl.javadude.gradle.plugins.license.LicensePlugin
 import org.ajoberstar.grgit.Grgit
+import org.ajoberstar.grgit.exception.GrgitException
 import org.ajoberstar.grgit.operation.DescribeOp
 import org.eclipse.jgit.errors.RepositoryNotFoundException
 import org.gradle.api.JavaVersion
@@ -67,10 +68,10 @@ fun getProjectVersion(): String {
         val git = Grgit.open()
         val describe = DescribeOp(git.repository).call()
         val branch = git.branch.current.name
-        return getVersion_do(describe, branch);
-    } catch(ex: RepositoryNotFoundException) {
-        logger.error("Git repository not found! Version will be incorrect!")
-        return getVersion_do("v9999-9999-gffffff", "localbuild")
+        return getVersion_do(describe, branch)
+    } catch(ex: RuntimeException) {
+        logger.error("Unknown error when accessing git repository! Are you sure the git repository exists?", ex)
+        throw ex
     }
 }
 
