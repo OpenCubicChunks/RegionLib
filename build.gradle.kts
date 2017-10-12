@@ -8,6 +8,7 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.internal.HasConvention
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.kotlin.dsl.extra
 import org.gradle.script.lang.kotlin.*
 
 buildscript {
@@ -22,23 +23,33 @@ buildscript {
     }
 }
 
-group = "cubicchunks"
+group = "io.github.opencubicchunks"
 version = getProjectVersion()
 
 val licenseYear = properties["licenseYear"] as String
 val projectName = properties["projectName"] as String
 
+val sourceSets = the<JavaPluginConvention>().sourceSets!!
+
+plugins {
+    java
+    signing
+    maven
+}
 apply {
-    plugin<JavaPlugin>()
     plugin<LicensePlugin>()
 }
 
-configure<JavaPluginConvention> {
-    setSourceCompatibility(JavaVersion.VERSION_1_8)
+base {
+    archivesBaseName = "RegionLib"
 }
 
+// configure
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
 
-configure<LicenseExtension> {
+license {
     val ext = (this as HasConvention).convention.extraProperties
     ext["project"] = projectName
     ext["year"] = licenseYear
@@ -53,6 +64,102 @@ configure<LicenseExtension> {
     mapping(mapOf("java" to "SLASHSTAR_STYLE"))
 }
 
+val javadocJar by tasks.creating(Jar::class) {
+    classifier = "javadoc"
+    from(tasks["javadoc"])
+}
+val sourcesJar by tasks.creating(Jar::class) {
+    classifier = "sources"
+    from(sourceSets["main"].java.srcDirs)
+}
+
+
+// based on:
+// https://github.com/Ordinastie/MalisisCore/blob/30d8efcfd047ac9e9bc75dfb76642bd5977f0305/build.gradle#L204-L256
+// https://github.com/gradle/kotlin-dsl/blob/201534f53d93660c273e09f768557220d33810a9/samples/maven-plugin/build.gradle.kts#L10-L44
+val uploadArchives: Upload by tasks
+uploadArchives.apply {
+    repositories {
+        withConvention(MavenRepositoryHandlerConvention::class) {
+            mavenDeployer {
+                // Sign Maven POM
+                beforeDeployment {
+                     signing.signPom(this)
+                }
+
+                val username = if (project.hasProperty("sonatypeUsername")) project.properties["sonatypeUsername"] else System.getenv("sonatypeUsername")
+                val password = if (project.hasProperty("sonatypePassword")) project.properties["sonatypePassword"] else System.getenv("sonatypePassword")
+
+                withGroovyBuilder {
+                    "snapshotRepository"("url" to "https://oss.sonatype.org/content/repositories/snapshots") {
+                        "authentication"("userName" to username, "password" to password)
+                    }
+
+                    "repository"("url" to "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
+                        "authentication"("userName" to username, "password" to password)
+                    }
+                }
+
+                // Maven POM generation
+                pom.project {
+                    withGroovyBuilder {
+                        "name"(projectName)
+                        "artifactId"(base.archivesBaseName.toLowerCase())
+                        "packaging"("jar")
+                        "url"("https://github.com/OpenCubicChunks/RegionLib")
+                        "description"("Minecraft-like Region data format library")
+
+
+                        "scm" {
+                            "connection"("scm:git:git://github.com/OpenCubicChunks/RegionLib.git")
+                            "developerConnection"("scm:git:ssh://git@github.com:OpenCubicChunks/RegionLib.git")
+                            "url"("https://github.com/OpenCubicChunks/RegionLib")
+                        }
+
+                        "licenses" {
+                            "license" {
+                                "name"("The MIT License")
+                                "url"("http://www.tldrlegal.com/license/mit-license")
+                                "distribution"("repo")
+                            }
+                        }
+
+                        "developers" {
+                            "developer" {
+                                "id"("Barteks2x")
+                                "name"("Barteks2x")
+                            }
+                            "developer" {
+                                "id"("xcube16")
+                                "name"("xcube16")
+                            }
+                        }
+
+                        "issueManagement" {
+                            "system"("github")
+                            "url"("https://github.com/OpenCubicChunks/RegionLib/issues")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// tasks must be before artifacts, don't change the order
+artifacts {
+    withGroovyBuilder {
+        "archives"(tasks["jar"], sourcesJar, javadocJar)
+    }
+}
+
+signing {
+    isRequired = false
+    // isRequired = gradle.taskGraph.hasTask("uploadArchives")
+    sign(configurations.archives)
+}
+
+// repositories and deps
 repositories {
     mavenCentral()
 }
@@ -61,14 +168,16 @@ dependencies {
     testCompile("junit:junit:4.11")
 }
 
-//returns version string according to this: http://semver.org/
-//format: MAJOR.MINOR.PATCH
+// returns version string according to this: http://semver.org/
+// format: MAJOR.MINOR.PATCH
+// also appends -SNAPSHOT for snapshot versions, so they can be uploaded as snapshots to maven
 fun getProjectVersion(): String {
     try {
         val git = Grgit.open()
         val describe = DescribeOp(git.repository).call()
         val branch = git.branch.current.name
-        return getVersion_do(describe, branch)
+        val snapshotSuffix = if (project.hasProperty("doRelease")) "" else "-SNAPSHOT"
+        return getVersion_do(describe, branch) + snapshotSuffix
     } catch(ex: RuntimeException) {
         logger.error("Unknown error when accessing git repository! Are you sure the git repository exists?", ex)
         return String.format("%s.%s.%s%s", "9999", "9999", "9999", "NOVERSION")

@@ -24,7 +24,7 @@
 package cubicchunks.regionlib;
 
 /**
- * A key for locating a value.<br/>
+ * A key for locating a value.
  * This class should be immutable.
  *
  * @param <K> This type
@@ -32,20 +32,20 @@ package cubicchunks.regionlib;
 public interface IKey<K extends IKey<K>> {
 	/**
 	 * Gets the index of this key in the region associated with
-	 * this region location<br/>
+	 * this region location
 	 * <p>
 	 * The index must be grater than or equal to 0 AND less than
-	 * {@link IKey#getKeyCount()}.<br/>
+	 * {@link IKey#getKeyCount()}.
 	 * <p>
-	 * The index must not overlap with another key's index within the region<br/>
+	 * The index must not overlap with another key's index within the region
 	 *
 	 * @return The index
 	 */
 	int getId();
 
 	/**
-	 * Gets the region's name.<br/>
-	 * The name must be unique per region key.<br/>
+	 * Gets the region's name.
+	 * The name must be unique per region key.
 	 * The name will usually be used as a file name so don't use any special characters.
 	 *
 	 * @return This region's name
@@ -53,7 +53,7 @@ public interface IKey<K extends IKey<K>> {
 	String getRegionName();
 
 	/**
-	 * Gets the maximum number of keys within this region. <br/>
+	 * Gets the maximum number of keys within this region.
 	 * The number must be constant withing one region (where the same value for getRegionName is returned)
 	 *
 	 * @return The number of keys in this region

@@ -31,7 +31,7 @@ import java.util.Optional;
 import cubicchunks.regionlib.IKey;
 
 /**
- * Stores all values within a fixed measure (area/volume/what ever) of keys.<br/>
+ * Stores all values within a fixed measure (area/volume/what ever) of keys.
  * Regions are used as a way of *chunking* the database.
  *
  * @param <K> The IKey type

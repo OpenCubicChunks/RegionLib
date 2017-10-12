@@ -33,7 +33,7 @@ import cubicchunks.regionlib.util.CheckedConsumer;
 
 /**
  * A low level key/value database optimized for storing
- * keys that are close together/clumped<br/>
+ * keys that are close together/clumped
  * Example: Key could be an integer location in n-dimensional space, like Minecraft chunk locations
  *
  * @param <S> This type
@@ -53,7 +53,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
 	/**
-	 * Saves/puts a value at a key<br/>
+	 * Saves/puts a value at a key
 	 * This method is thread safe.
 	 *
 	 * @param key The key
@@ -64,7 +64,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
 	/**
-	 * Loads/gets a value at a key<br/>
+	 * Loads/gets a value at a key
 	 * This Method is thread safe.
 	 *
 	 * @param key The key

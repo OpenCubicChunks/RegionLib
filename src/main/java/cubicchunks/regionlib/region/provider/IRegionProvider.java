@@ -71,8 +71,7 @@ public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 	 * region if one doesn't exist yet. The region will be closed automatically as needed.
 	 *
 	 * @param key The key for the IRegion
-	 *
-	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
+	 * @param consumer Accepts the given region, if it already exists
 	 */
 	void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
 
