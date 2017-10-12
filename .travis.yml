@@ -16,4 +16,11 @@ script: ./gradlew build
 
 notifications:
   email: false
- 
+
+deploy:
+  - provider: script
+    script: "./gradlew uploadArchives"
+    skip_cleanup: true
+    on:
+      repo: OpenCubicChunks/RegionLib
+      all_branches: true
