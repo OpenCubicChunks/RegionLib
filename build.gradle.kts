@@ -175,13 +175,34 @@ fun getProjectVersion(): String {
     try {
         val git = Grgit.open()
         val describe = DescribeOp(git.repository).call()
-        val branch = git.branch.current.name
+        val branch = getGitBranch()
         val snapshotSuffix = if (project.hasProperty("doRelease")) "" else "-SNAPSHOT"
         return getVersion_do(describe, branch) + snapshotSuffix
     } catch(ex: RuntimeException) {
         logger.error("Unknown error when accessing git repository! Are you sure the git repository exists?", ex)
         return String.format("%s.%s.%s%s", "9999", "9999", "9999", "NOVERSION")
     }
+}
+
+
+fun getGitBranch(git: Grgit): String {
+    var branch: String = git.branch.current.name
+    if (branch == "HEAD") {
+        branch = when {
+            System.getenv("TRAVIS_BRANCH")?.isEmpty() == false -> // travis
+                System.getenv("TRAVIS_BRANCH")
+            System.getenv("GIT_BRANCH")?.isEmpty() == false -> // jenkins
+                System.getenv("GIT_BRANCH")
+            System.getenv("BRANCH_NAME")?.isEmpty() == false -> // ??? another jenkins alternative?
+                System.getenv("BRANCH_NAME")
+            else -> throw RuntimeException("Found HEAD branch! This is most likely caused by detached head state! Will assume unknown version!")
+        }
+    }
+
+    if (branch.startsWith("origin/")) {
+        branch = branch.substring("origin/".length)
+    }
+    return branch
 }
 
 fun getVersion_do(describe: String, branch: String) : String {
