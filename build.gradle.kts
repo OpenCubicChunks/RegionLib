@@ -175,7 +175,7 @@ fun getProjectVersion(): String {
     try {
         val git = Grgit.open()
         val describe = DescribeOp(git.repository).call()
-        val branch = getGitBranch()
+        val branch = getGitBranch(git)
         val snapshotSuffix = if (project.hasProperty("doRelease")) "" else "-SNAPSHOT"
         return getVersion_do(describe, branch) + snapshotSuffix
     } catch(ex: RuntimeException) {
