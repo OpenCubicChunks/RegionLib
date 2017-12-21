@@ -76,22 +76,22 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 		if (location.isExternal())	{
 			System.out.println(path.toAbsolutePath().toFile().getName());
-			File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
+			File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + ".E" + key.getId() + ".bin");
 			System.out.println("Saving data to external file: " + f.getAbsoluteFile().toString());
 			if (f.exists()) {
 				//clear the contents of the file before writing
 				PrintWriter writer = new PrintWriter(f);
 				writer.close();
 			}
+			Files.createDirectories(f.toPath().getParent());
 			Files.write(f.toPath(), value.array());
-			return;
+		} else {
+
+			int bytesOffset = location.getOffset() * sectorSize;
+
+			file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
+			file.write(value);
 		}
-
-		int bytesOffset = location.getOffset()*sectorSize;
-
-		file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
-		file.write(value);
-
 		final int id = key.getId();
 		final int sectorMapEntries = key.getKeyCount();
 		int currentHeaderBytes = 0;
@@ -116,7 +116,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 					if (loc.isExternal())	{
 						System.out.println(path.toAbsolutePath().toFile().getName());
-						File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
+						File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + ".E" + key.getId() + ".bin");
 						System.out.println("Reading data from external file: " + f.getAbsoluteFile().toString());
 						if (f.exists())	{
 							byte[] data = IOUtils.readFully(new FileInputStream(f), -1, false);
