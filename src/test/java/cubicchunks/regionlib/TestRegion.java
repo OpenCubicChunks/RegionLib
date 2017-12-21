@@ -57,7 +57,7 @@ public class TestRegion {
                 new Region.Builder().setPath(path).setEntriesPerRegion(key.getKeyCount()).setSectorSize(512).build();
 
 		Random rnd = new Random(42);
-		ByteBuffer[] dataArray = new ByteBuffer[100];
+		ByteBuffer[] dataArray = new ByteBuffer[1000];
 		long totalBytes = 0;
 		long totalRead = 0;
 		for (int i = 0; i < dataArray.length; i++) {
@@ -111,7 +111,7 @@ public class TestRegion {
 	}
 
 	private ByteBuffer getData(Random rnd) {
-		int size = rnd.nextInt(2000000);
+		int size = rnd.nextInt(2000);
 		byte[] arr = new byte[size];
 		rnd.nextBytes(arr);
 		return ByteBuffer.wrap(arr);
