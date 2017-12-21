@@ -44,6 +44,10 @@ public class RegionSectorTracker<K extends IKey<K>> {
 	 * Returns offset for the given key and requestedSize, and reserves these sectors
 	 */
 	public RegionEntryLocation reserveForKey(K key, int requestedSize) throws IOException {
+		if (requestedSize > IntPackedSectorMap.MAX_SIZE)	{
+			return new RegionEntryLocation(-1, 0);
+		}
+
 		Optional<RegionEntryLocation> existing = sectorMap.getEntryLocation(key);
 		RegionEntryLocation found = findSectorFor(existing.orElse(null), requestedSize);
 		this.sectorMap.setOffsetAndSize(key, found);

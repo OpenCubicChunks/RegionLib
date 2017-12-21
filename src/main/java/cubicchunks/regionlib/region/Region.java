@@ -23,10 +23,7 @@
  */
 package cubicchunks.regionlib.region;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -39,6 +36,7 @@ import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.region.header.IHeaderDataEntryProvider;
 import cubicchunks.regionlib.util.WrappedException;
+import sun.misc.IOUtils;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
@@ -73,17 +71,21 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		int sizeWithSizeInfo = size + Integer.BYTES;
 		int numSectors = getSectorNumber(sizeWithSizeInfo);
 
-		//TODO: find a way to get a RegionEntryLocation before the method that throws the exception
-		/*if (loc.isExternal())	{
+		//overflow is thrown by this method
+		RegionEntryLocation location = this.regionSectorTracker.reserveForKey(key, numSectors);
+
+		if (location.isExternal())	{
 			System.out.println(path.toAbsolutePath().toFile().getName());
 			File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
 			System.out.println("Saving data to external file: " + f.getAbsoluteFile().toString());
-			//TODO: write to file
+			if (f.exists()) {
+				//clear the contents of the file before writing
+				PrintWriter writer = new PrintWriter(f);
+				writer.close();
+			}
+			Files.write(f.toPath(), value.array());
 			return;
-		}*/
-
-		//overflow is thrown by this method
-		RegionEntryLocation location = this.regionSectorTracker.reserveForKey(key, numSectors);
+		}
 
 		int bytesOffset = location.getOffset()*sectorSize;
 
@@ -116,8 +118,12 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 						System.out.println(path.toAbsolutePath().toFile().getName());
 						File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
 						System.out.println("Reading data from external file: " + f.getAbsoluteFile().toString());
-						//TODO: read from file
-						return null;
+						if (f.exists())	{
+							byte[] data = IOUtils.readFully(new FileInputStream(f), -1, false);
+							return Optional.of(ByteBuffer.wrap(data));
+						} else {
+							throw new IllegalStateException("External data doesn't exist! Path: " + f.getAbsoluteFile().toString());
+						}
 					}
 
 					file.position(sectorOffset*sectorSize).read(buf);
