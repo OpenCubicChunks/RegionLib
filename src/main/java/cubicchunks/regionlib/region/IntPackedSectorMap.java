@@ -39,7 +39,7 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	private static final int SIZE_BITS = 8;
 	private static final int OFFSET_BITS = Integer.SIZE - SIZE_BITS;
 	private static final int SIZE_MASK = (1 << SIZE_BITS) - 1;
-	private static final int MAX_SIZE = SIZE_MASK;
+	public static final int MAX_SIZE = SIZE_MASK;
 	private static final int OFFSET_MASK = (1 << OFFSET_BITS) - 1;
 	private static final int MAX_OFFSET = OFFSET_MASK;
 
@@ -90,6 +90,10 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	}
 
 	private static int unpackOffset(int sectorLocation) {
+		if (sectorLocation == OFFSET_MASK)	{
+			return -1;
+		}
+
 		return sectorLocation >>> SIZE_BITS;
 	}
 

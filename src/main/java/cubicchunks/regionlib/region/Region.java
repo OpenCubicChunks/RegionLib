@@ -23,6 +23,9 @@
  */
 package cubicchunks.regionlib.region;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -54,6 +57,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	private final SeekableByteChannel file;
 	private List<IHeaderDataEntryProvider<?, K>> headerEntryProviders;
 	private final int sectorSize;
+	private Path path;
 
 	private Region(SeekableByteChannel file, IntPackedSectorMap<K> sectorMap, RegionSectorTracker<K> sectorTracker,
 	               List<IHeaderDataEntryProvider<?, K>> headerEntryProviders, int sectorSize) throws IOException {
@@ -68,6 +72,17 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		int size = value.remaining();
 		int sizeWithSizeInfo = size + Integer.BYTES;
 		int numSectors = getSectorNumber(sizeWithSizeInfo);
+
+		//TODO: find a way to get a RegionEntryLocation before the method that throws the exception
+		/*if (loc.isExternal())	{
+			System.out.println(path.toAbsolutePath().toFile().getName());
+			File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
+			System.out.println("Saving data to external file: " + f.getAbsoluteFile().toString());
+			//TODO: write to file
+			return;
+		}*/
+
+		//overflow is thrown by this method
 		RegionEntryLocation location = this.regionSectorTracker.reserveForKey(key, numSectors);
 
 		int bytesOffset = location.getOffset()*sectorSize;
@@ -97,6 +112,14 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 					ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
 
+					if (loc.isExternal())	{
+						System.out.println(path.toAbsolutePath().toFile().getName());
+						File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + "E" + key.getId() + ".bin");
+						System.out.println("Reading data from external file: " + f.getAbsoluteFile().toString());
+						//TODO: read from file
+						return null;
+					}
+
 					file.position(sectorOffset*sectorSize).read(buf);
 
 					int dataLength = buf.getInt(0);
@@ -115,6 +138,11 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		} catch (WrappedException e) {
 			throw (IOException) e.get();
 		}
+	}
+
+	public Region setPath(Path path)	{
+		this.path = path;
+		return this;
 	}
 
 	/**
@@ -177,7 +205,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, entriesPerRegion);
 			RegionSectorTracker<K> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
 			this.headerEntryProviders.add(0, sectorMap.headerEntryProvider());
-			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize);
+			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize).setPath(path);
 		}
 	}
 }

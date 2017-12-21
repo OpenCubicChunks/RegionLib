@@ -41,7 +41,11 @@ public class RegionEntryLocation {
 	}
 
 	public RegionEntryLocation withSize(int size) {
-		return new RegionEntryLocation(getOffset(), size);
+		RegionEntryLocation orig = new RegionEntryLocation(getOffset(), size);
+		if (orig.getSize() > IntPackedSectorMap.MAX_SIZE)	{
+			return new RegionEntryLocation(-1, 0);
+		}
+		return orig;
 	}
 
 	@Override public boolean equals(Object o) {
@@ -64,5 +68,9 @@ public class RegionEntryLocation {
 		int result = offset;
 		result = 31*result + size;
 		return result;
+	}
+
+	public boolean isExternal()	{
+		return offset == -1;
 	}
 }
