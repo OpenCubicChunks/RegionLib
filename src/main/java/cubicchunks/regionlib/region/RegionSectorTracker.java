@@ -44,10 +44,6 @@ public class RegionSectorTracker<K extends IKey<K>> {
 	 * Returns offset for the given key and requestedSize, and reserves these sectors
 	 */
 	public RegionEntryLocation reserveForKey(K key, int requestedSize) throws IOException {
-		if (requestedSize > IntPackedSectorMap.MAX_SIZE)	{
-			return new RegionEntryLocation(-1, 0);
-		}
-
 		Optional<RegionEntryLocation> existing = sectorMap.getEntryLocation(key);
 		RegionEntryLocation found = findSectorFor(existing.orElse(null), requestedSize);
 		this.sectorMap.setOffsetAndSize(key, found);
@@ -56,14 +52,18 @@ public class RegionSectorTracker<K extends IKey<K>> {
 	}
 
 	private RegionEntryLocation findSectorFor(RegionEntryLocation oldSector, int requestedSize) {
-		int oldSectorSize = oldSector == null ? 0 : oldSector.getSize();
+		if (requestedSize > IntPackedSectorMap.MAX_SIZE)	{
+			return new RegionEntryLocation(-1, 0);
+		}
+
+		int oldSectorSize = (oldSector == null || oldSector.isExternal()) ? 0 : oldSector.getSize();
 		int newSectorSize = requestedSize;
 
 		if (newSectorSize <= oldSectorSize) {
 			return oldSector.withSize(requestedSize);
 		}
 		// first try at old sector location, or at 0 if it's not there
-		int oldSectorOffset = oldSector == null ? 0 : oldSector.getOffset();
+		int oldSectorOffset = (oldSector == null || oldSector.isExternal()) ? 0 : oldSector.getOffset();
 		boolean isEnough = true;
 		for (int i = oldSectorOffset + oldSectorSize; i < oldSectorOffset + newSectorSize; i++) {
 			if (!isSectorFree(i)) {
@@ -101,18 +101,22 @@ public class RegionSectorTracker<K extends IKey<K>> {
 		// mark old parts as unused
 		if (oldSectorLocation != null) {
 			int oldOffset = oldSectorLocation.getOffset();
-			int oldSize = oldSectorLocation.getSize();
-			for (int i = 0; i < oldSize; i++) {
-				usedSectors.set(oldOffset + i, false);
+			if (oldOffset != -1) {
+				int oldSize = oldSectorLocation.getSize();
+				for (int i = 0; i < oldSize; i++) {
+					usedSectors.set(oldOffset + i, false);
+				}
 			}
 		}
 
 		// mark new parts as used, this will work even if they overlap
 		if (newSectorLocation != null) {
 			int newOffset = newSectorLocation.getOffset();
-			int newSize = newSectorLocation.getSize();
-			for (int i = 0; i < newSize; i++) {
-				usedSectors.set(newOffset + i, true);
+			if (newOffset != -1) {
+				int newSize = newSectorLocation.getSize();
+				for (int i = 0; i < newSize; i++) {
+					usedSectors.set(newOffset + i, true);
+				}
 			}
 		}
 	}
@@ -131,6 +135,9 @@ public class RegionSectorTracker<K extends IKey<K>> {
 		// mark used sectors
 		for (RegionEntryLocation loc : sectorMap) {
 			int offset = loc.getOffset();
+			if (offset == -1) {
+				continue; // external
+			}
 			int size = loc.getSize();
 			for (int i = 0; i < size; i++) {
 				usedSectors.set(offset + i);

@@ -90,7 +90,7 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	}
 
 	private static int unpackOffset(int sectorLocation) {
-		if (sectorLocation == OFFSET_MASK)	{
+		if (sectorLocation == -1)	{
 			return -1;
 		}
 
@@ -102,6 +102,9 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	}
 
 	private static int packed(RegionEntryLocation location) {
+		if (location.getOffset() == -1) {
+			return -1;
+		}
 		if ((location.getSize() & SIZE_MASK) != location.getSize()) {
 			throw new IllegalArgumentException("Supported entry size range is 0 to " + MAX_SIZE + ", but got " + location.getSize());
 		}
