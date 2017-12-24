@@ -23,7 +23,9 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.api.region.key.RegionKey;
 
 public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 
@@ -33,10 +35,12 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 
 	private final int entryX;
 	private final int entryZ;
+	private String extension;
 
-	public MinecraftChunkLocation(int entryX, int entryZ) {
+	public MinecraftChunkLocation(int entryX, int entryZ, String extension) {
 		this.entryX = entryX;
 		this.entryZ = entryZ;
+		this.extension = extension;
 	}
 
 	public int getEntryX() {
@@ -73,15 +77,10 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 	}
 
 	@Override
-	public String getRegionName() {
+	public RegionKey getRegionKey() {
 		int regX = entryX >> LOC_BITS;
 		int regZ = entryZ >> LOC_BITS;
-		return "r." + regX + "." + regZ + ".mca";
-	}
-
-	@Override
-	public int getKeyCount() {
-		return ENTRIES_PER_REGION;
+		return new RegionKey("r." + regX + "." + regZ + "." + extension);
 	}
 
 	@Override
@@ -91,19 +90,32 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 
 	@Override
 	public String toString() {
-		return "EntryLocation2D{" +
-			"entryX=" + entryX +
-			", entryZ=" + entryZ +
-			'}';
+		return "EntryLocation2D{" + "entryX=" + entryX + ", entryZ=" + entryZ + ", extension=" + extension + "}";
 	}
 
-	public static MinecraftChunkLocation fromRelative(String name, int relativeX, int relativeZ) {
-		if (!name.matches("r\\.-?\\d+\\.-?\\d+\\.mca")) {
-			throw new IllegalArgumentException("Invalid name " + name);
+	public static class Provider implements IKeyProvider<MinecraftChunkLocation> {
+
+		private String extension;
+
+		public Provider(String extension) {
+			this.extension = extension;
 		}
-		String[] s = name.split("\\.");
-		return new MinecraftChunkLocation(
-			Integer.parseInt(s[1]) << LOC_BITS | relativeX,
-			Integer.parseInt(s[2]) << LOC_BITS | relativeZ);
+
+		@Override public IKey<MinecraftChunkLocation> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
+			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\." + extension)) {
+				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
+			}
+			String[] s = regionKey.getName().split("\\.");
+
+			int relativeX = id >>> LOC_BITS;
+			int relativeZ = id & LOC_BITMASK;
+			return new MinecraftChunkLocation(
+					Integer.parseInt(s[0]) << LOC_BITS | relativeX,
+					Integer.parseInt(s[1]) << LOC_BITS | relativeZ, extension);
+		}
+
+		@Override public int getKeyCount(RegionKey key) {
+			return ENTRIES_PER_REGION;
+		}
 	}
 }

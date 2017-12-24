@@ -21,17 +21,22 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region;
+package cubicchunks.regionlib.api.region;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.util.CheckedConsumer;
 
 /**
- * Stores all values within a fixed measure (area/volume/what ever) of keys.
+ * The low level storage for data, represents it's logical organization. Different regions may not necessarily correspong to different files, and a
+ * region may be backed by more than one file. A region can store a constant, known amount of entries, specified by {@link IKeyProvider}.
+ *
+ * Stores all values within a fixed measure (usually area or volume) of keys (locations).
  * Regions are used as a way of *chunking* the database.
  *
  * @param <K> The IKey type
@@ -59,4 +64,9 @@ public interface IRegion<K extends IKey<K>> extends Closeable {
 	 * Returns true if something was stored there before within this region.
 	 */
 	boolean hasValue(K key);
+
+	/**
+	 * Applies the consumer to all existing region keys
+	 */
+	void forEachKey(CheckedConsumer<? super K, IOException> cons);
 }

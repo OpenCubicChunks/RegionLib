@@ -21,16 +21,19 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib;
+package cubicchunks.regionlib.api.region.header;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
- * An exception that is thrown when data can not be read/written
- * do to a format problem.
+ * A header entry. Implementations of this class should write the header entry data to the provided {@link ByteBuffer}
  */
-public class CorruptedDataException extends IOException {
-	public CorruptedDataException(String text) {
-		super(text);
-	}
+public interface IHeaderDataEntry {
+	/**
+	 * Writes the header entry data to the provided {@link ByteBuffer}. A given implementation should only write a constant amount of data.
+	 * The amount is szpecified by the corresponding {@link IHeaderDataEntryProvider}
+	 *
+	 * @param buffer The buffer to write the data to
+	 */
+	void write(ByteBuffer buffer);
 }

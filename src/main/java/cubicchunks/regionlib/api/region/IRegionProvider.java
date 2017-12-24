@@ -21,19 +21,19 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region.provider;
+package cubicchunks.regionlib.api.region;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
 
-import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.region.IRegion;
+import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 
 /**
- * Acts as a source of regions (creation/loading/caching)
+ * Provides a by-key access to Regions, also allows to get access to all existing regions.
+ * Can be used as a source of regions (creation/loading/caching).
  *
  * @param <K> The key type
  */
@@ -100,5 +100,5 @@ public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 	/**
 	 * Calls the given consumer for all existing region names.
 	 */
-	void forAllRegions(CheckedConsumer<? super String, IOException> consumer) throws IOException;
+	void forAllRegions(CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
 }

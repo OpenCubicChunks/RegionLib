@@ -21,26 +21,36 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region.header;
+package cubicchunks.regionlib.api.region.key;
 
-import java.util.concurrent.TimeUnit;
+/**
+ * Specifies a logical location of a chunk of data (ByteBuffer), and maps the logical location to the region it's stored in ({@link RegionKey}),
+ * and logical location inside the region (ID).
+ * This class should be immutable.
+ *
+ * @param <K> This type
+ */
+public interface IKey<K extends IKey<K>> {
+	/**
+	 * Gets the index of this key in the region associated with
+	 * this region location
+	 *
+	 * The index must be grater than or equal to 0 AND less than
+	 * {@link IKeyProvider#getKeyCount(RegionKey)}.
+	 *
+	 * The index must be unique within one region. Specifically, for any 2 IKey objects of the same type,
+	 * {@code k1.getRegionKey().equals(k2.getRegionKey()) && k1.getId() != k2.getId() } must always be true.
+	 *
+	 * @return The index
+	 */
+	int getId();
 
-import cubicchunks.regionlib.IKey;
-
-public class TimestampHeaderEntryProvider<L extends IKey<L>> implements IHeaderDataEntryProvider<IntHeaderEntry, L> {
-
-	private final TimeUnit timeUnit;
-
-	public TimestampHeaderEntryProvider(TimeUnit timeUnit) {
-
-		this.timeUnit = timeUnit;
-	}
-
-	@Override public int getEntryByteCount() {
-		return Integer.BYTES;
-	}
-
-	@Override public IntHeaderEntry apply(L o) {
-		return new IntHeaderEntry((int) TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), timeUnit));
-	}
+	/**
+	 * Gets the region's key.
+	 * The name may be used as a file name, so names not matching {@code ^[a-z0-9\._\-]+$} are not supported. Uppercase characters are not allowed
+	 * to avoid case-sensitivity issues across different operating systems.
+	 *
+	 * @return This region's key
+	 */
+	RegionKey getRegionKey();
 }

@@ -21,19 +21,31 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region.header;
+package cubicchunks.regionlib.impl.header;
 
-import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
 
-public class IntHeaderEntry implements IHeaderDataEntry {
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
+import cubicchunks.regionlib.lib.header.IntHeaderEntry;
 
-	private final int data;
+/**
+ * Header entry provider that stores a timestamp. Used by Minecraft region format.
+ */
+public class TimestampHeaderEntryProvider<L extends IKey<L>> implements IHeaderDataEntryProvider<IntHeaderEntry, L> {
 
-	public IntHeaderEntry(int data) {
-		this.data = data;
+	private final TimeUnit timeUnit;
+
+	public TimestampHeaderEntryProvider(TimeUnit timeUnit) {
+
+		this.timeUnit = timeUnit;
 	}
 
-	@Override public void write(ByteBuffer buffer) {
-		buffer.putInt(data);
+	@Override public int getEntryByteCount() {
+		return Integer.BYTES;
+	}
+
+	@Override public IntHeaderEntry apply(L o) {
+		return new IntHeaderEntry((int) TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), timeUnit));
 	}
 }

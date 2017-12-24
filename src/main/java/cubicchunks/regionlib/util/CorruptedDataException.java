@@ -21,36 +21,16 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region.header;
+package cubicchunks.regionlib.util;
 
-import java.util.function.ToIntFunction;
+import java.io.IOException;
 
-import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.region.IKeyIdToSectorMap;
-import cubicchunks.regionlib.region.RegionEntryLocation;
-
-public class EntryLocationHeaderEntryProvider<K extends IKey<K>>
-	implements IHeaderDataEntryProvider<IntHeaderEntry, K> {
-
-	private IKeyIdToSectorMap<IntHeaderEntry, EntryLocationHeaderEntryProvider<K>, K> sectorMap;
-	private ToIntFunction<RegionEntryLocation> pack;
-
-	public EntryLocationHeaderEntryProvider(
-		IKeyIdToSectorMap<IntHeaderEntry, EntryLocationHeaderEntryProvider<K>, K> sectorMap, ToIntFunction<RegionEntryLocation> pack) {
-		this.sectorMap = sectorMap;
-
-		this.pack = pack;
-	}
-
-	@Override public int getEntryByteCount() {
-		return Integer.BYTES;
-	}
-
-	@Override public IntHeaderEntry apply(K key) {
-		return new IntHeaderEntry(
-			sectorMap.getEntryLocation(key)
-				.map(l -> pack.applyAsInt(l))
-				.orElse(0)
-		);
+/**
+ * An exception that is thrown when data can not be read/written
+ * do to a format problem.
+ */
+public class CorruptedDataException extends IOException {
+	public CorruptedDataException(String text) {
+		super(text);
 	}
 }

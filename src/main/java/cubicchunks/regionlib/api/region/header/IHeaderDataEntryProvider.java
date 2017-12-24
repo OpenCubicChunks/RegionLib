@@ -21,23 +21,19 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.region;
+package cubicchunks.regionlib.api.region.header;
 
-import java.io.IOException;
-import java.util.Optional;
+import cubicchunks.regionlib.api.region.key.IKey;
 
-import cubicchunks.regionlib.IKey;
-import cubicchunks.regionlib.region.header.IHeaderDataEntry;
-import cubicchunks.regionlib.region.header.IHeaderDataEntryProvider;
+import java.util.function.Function;
 
-public interface IKeyIdToSectorMap<
-	H extends IHeaderDataEntry,
-	P extends IHeaderDataEntryProvider<H, K>,
-	K extends IKey<K>> extends Iterable<RegionEntryLocation> {
+/**
+ * Supplies {@link IHeaderDataEntry} objects by {@link IKey}, and provides the necessary metadata (currently entry size)
+ */
+public interface IHeaderDataEntryProvider<H extends IHeaderDataEntry, K extends IKey<K>> extends Function<K, H> {
 
-	Optional<RegionEntryLocation> getEntryLocation(K key);
-
-	void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException;
-
-	P headerEntryProvider();
+	/**
+	 * @return size of the header entry in bytes
+	 */
+	int getEntryByteCount();
 }

@@ -48,8 +48,12 @@ public class SaveCubeColumns implements Closeable {
 
 	/**
 	 * Schedules entry for writing
-	 * <p>
+	 *
 	 * This can be accessed from multiple threads. (thread safe)
+	 *
+	 * @param location location of the entry
+     * @param data the entry data to be saved
+     * @throws IOException when an unexpected IO error occurs
 	 */
 	public void save3d(EntryLocation3D location, ByteBuffer data) throws IOException {
 		this.saveSection3D.save(location, data);
@@ -57,8 +61,12 @@ public class SaveCubeColumns implements Closeable {
 
 	/**
 	 * Schedules entry for writing
-	 * <p>
+	 *
 	 * This can be accessed from multiple threads. (thread safe)
+     *
+     * @param location location of the entry
+     * @param data the entry data to be saved
+     * @throws IOException when an unexpected IO error occurs
 	 */
 	public void save2d(EntryLocation2D location, ByteBuffer data) throws IOException {
 		this.saveSection2D.save(location, data);
@@ -66,8 +74,13 @@ public class SaveCubeColumns implements Closeable {
 
 	/**
 	 * Reads entry at given location.
-	 * <p>
+	 *
 	 * This can be accessed from multiple threads. (thread safe)
+     *
+     * @param location the location of the entry data to load
+     * @throws IOException when an unexpected IO error occurs
+     *
+     * @return An Optional containing the value if it exists
 	 */
 	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException {
 		return saveSection3D.load(location);
@@ -77,6 +90,11 @@ public class SaveCubeColumns implements Closeable {
 	 * Reads entry at given location.
 	 * <p>
 	 * This can be accessed from multiple threads. (thread safe)
+     *
+     * @param location the location of the entry data to load
+     * @throws IOException when an unexpected IO error occurs
+     *
+     * @return An Optional containing the value if it exists
 	 */
 	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException {
 		return saveSection2D.load(location);
@@ -84,6 +102,7 @@ public class SaveCubeColumns implements Closeable {
 
 	/**
 	 * @param directory directory for the save
+     * @throws IOException when an unexpected IO error occurs
 	 */
 	public static SaveCubeColumns create(Path directory) throws IOException {
 		Files.createDirectories(directory);

@@ -23,7 +23,9 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.api.region.key.RegionKey;
 
 /**
  * A 3D implementation of IEntryLocation
@@ -74,16 +76,12 @@ public class EntryLocation3D implements IKey<EntryLocation3D> {
 		return result;
 	}
 
-	@Override public String getRegionName() {
+	@Override public RegionKey getRegionKey() {
 		int regX = entryX >> LOC_BITS;
 		int regY = entryY >> LOC_BITS;
 		int regZ = entryZ >> LOC_BITS;
 
-		return regX + "." + regY + "." + regZ + ".3dr";
-	}
-
-	@Override public int getKeyCount() {
-		return ENTRIES_PER_REGION;
+		return new RegionKey(regX + "." + regY + "." + regZ + ".3dr");
 	}
 
 	@Override public int getId() {
@@ -98,14 +96,25 @@ public class EntryLocation3D implements IKey<EntryLocation3D> {
 			'}';
 	}
 
-	public static EntryLocation3D fromRelative(String name, int relativeX, int relativeY, int relativeZ) {
-		if (!name.matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
-			throw new IllegalArgumentException("Invalid name " + name);
+	public static class Provider implements IKeyProvider<EntryLocation3D> {
+
+		@Override public IKey<EntryLocation3D> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
+			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
+				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
+			}
+			String[] s = regionKey.getName().split("\\.");
+
+			int relativeX = id >>> LOC_BITS * 2;
+			int relativeY = (id >>> LOC_BITS) & LOC_BITMASK;
+			int relativeZ = id & LOC_BITMASK;
+			return new EntryLocation3D(
+					Integer.parseInt(s[0]) << LOC_BITS | relativeX,
+					Integer.parseInt(s[1]) << LOC_BITS | relativeY,
+					Integer.parseInt(s[2]) << LOC_BITS | relativeZ);
 		}
-		String[] s = name.split("\\.");
-		return new EntryLocation3D(
-			Integer.parseInt(s[0]) << LOC_BITS | relativeX,
-			Integer.parseInt(s[1]) << LOC_BITS | relativeY,
-			Integer.parseInt(s[2]) << LOC_BITS | relativeZ);
+
+		@Override public int getKeyCount(RegionKey key) {
+			return ENTRIES_PER_REGION;
+		}
 	}
 }

@@ -23,7 +23,9 @@
  */
 package cubicchunks.regionlib.impl;
 
-import cubicchunks.regionlib.IKey;
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.api.region.key.RegionKey;
 
 /**
  * A 2D implementation of IEntryLocation
@@ -66,14 +68,10 @@ public class EntryLocation2D implements IKey<EntryLocation2D> {
 		return result;
 	}
 
-	@Override public String getRegionName() {
+	@Override public RegionKey getRegionKey() {
 		int regX = entryX >> LOC_BITS;
 		int regZ = entryZ >> LOC_BITS;
-		return regX + "." + regZ + ".2dr";
-	}
-
-	@Override public int getKeyCount() {
-		return EntryLocation2D.ENTRIES_PER_REGION;
+		return new RegionKey(regX + "." + regZ + ".2dr");
 	}
 
 	@Override public int getId() {
@@ -87,13 +85,23 @@ public class EntryLocation2D implements IKey<EntryLocation2D> {
 			'}';
 	}
 
-	public static EntryLocation2D fromRelative(String name, int relativeX, int relativeZ) {
-		if (!name.matches("-?\\d+\\.-?\\d+\\.2dr")) {
-			throw new IllegalArgumentException("Invalid name " + name);
+	public static class Provider implements IKeyProvider<EntryLocation2D> {
+
+		@Override public IKey<EntryLocation2D> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
+			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\.2dr")) {
+				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
+			}
+			String[] s = regionKey.getName().split("\\.");
+
+			int relativeX = id >>> LOC_BITS;
+			int relativeZ = id & LOC_BITMASK;
+			return new EntryLocation2D(
+					Integer.parseInt(s[0]) << LOC_BITS | relativeX,
+					Integer.parseInt(s[1]) << LOC_BITS | relativeZ);
 		}
-		String[] s = name.split("\\.");
-		return new EntryLocation2D(
-			Integer.parseInt(s[0]) << LOC_BITS | relativeX,
-			Integer.parseInt(s[1]) << LOC_BITS | relativeZ);
+
+		@Override public int getKeyCount(RegionKey key) {
+			return EntryLocation2D.ENTRIES_PER_REGION;
+		}
 	}
 }

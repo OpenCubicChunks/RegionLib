@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib;
 
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -35,7 +36,7 @@ import java.util.Map;
 import java.util.Random;
 
 import cubicchunks.regionlib.impl.EntryLocation3D;
-import cubicchunks.regionlib.region.Region;
+import cubicchunks.regionlib.lib.Region;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
@@ -50,11 +51,16 @@ public class TestRegion {
 
 		// writes 1000 random byte arrays, each time reading all previously written arrays to confirm they are the same
 		// also measures time it took and amount of read/written bytes
-		folder.newFolder("save");
-		Path path = folder.newFile("save/test.3dr").toPath();
+		Path path = folder.newFolder("save").toPath();
+		IKeyProvider<EntryLocation3D> keyProvider = new EntryLocation3D.Provider();
 		EntryLocation3D key = new EntryLocation3D(0, 0, 0);
 		Region<EntryLocation3D> save =
-                new Region.Builder().setPath(path).setEntriesPerRegion(key.getKeyCount()).setSectorSize(512).build();
+				new Region.Builder()
+						.setDirectory(path)
+						.setEntryCount(keyProvider.getKeyCount(key.getRegionKey()))
+						.setRegionKey(key.getRegionKey())
+						.setSectorSize(512)
+						.build();
 
 		Random rnd = new Random(42);
 		ByteBuffer[] dataArray = new ByteBuffer[1000];
@@ -83,7 +89,12 @@ public class TestRegion {
 
 			// re-open the Region
 			save.close();
-			save = new Region.Builder().setPath(path).setEntriesPerRegion(key.getKeyCount()).setSectorSize(512).build();
+			save = new Region.Builder()
+					.setDirectory(path)
+					.setEntryCount(keyProvider.getKeyCount(key.getRegionKey()))
+					.setRegionKey(key.getRegionKey())
+					.setSectorSize(512)
+					.build();
 
 			for (int readI = 0; readI <= i; readI++) {
 				if (dataArray[readI] == null) {

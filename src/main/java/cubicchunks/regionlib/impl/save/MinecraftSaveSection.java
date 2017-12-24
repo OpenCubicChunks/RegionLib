@@ -26,17 +26,17 @@ package cubicchunks.regionlib.impl.save;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
-import cubicchunks.regionlib.SaveSection;
+import cubicchunks.regionlib.api.storage.SaveSection;
 import cubicchunks.regionlib.impl.MinecraftChunkLocation;
-import cubicchunks.regionlib.region.Region;
-import cubicchunks.regionlib.region.header.TimestampHeaderEntryProvider;
-import cubicchunks.regionlib.region.provider.CachedRegionProvider;
-import cubicchunks.regionlib.region.provider.IRegionProvider;
-import cubicchunks.regionlib.region.provider.SimpleRegionProvider;
+import cubicchunks.regionlib.lib.Region;
+import cubicchunks.regionlib.impl.header.TimestampHeaderEntryProvider;
+import cubicchunks.regionlib.lib.provider.CachedRegionProvider;
+import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
 
 public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, MinecraftChunkLocation> {
 	/**
-	 * Creates a SaveSection with a customized IRegionProvider
+	 * Creates a Minecraft save section with a customized IRegionProvider
 	 *
 	 * @param regionProvider The region provider
 	 */
@@ -46,14 +46,14 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 
 	public static MinecraftSaveSection createAt(Path directory) {
 		return new MinecraftSaveSection(new CachedRegionProvider<MinecraftChunkLocation>(
-			new SimpleRegionProvider<>(directory, (path, key) ->
-				Region.<MinecraftChunkLocation>builder()
-					.setPath(path)
-					.setSectorSize(4096)
-					.setEntriesPerRegion(key.getKeyCount())
-					.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
-					.build()
-			), 128
+				new SimpleRegionProvider<>(new MinecraftChunkLocation.Provider("mcr"), directory, (keyProvider, regionKey) ->
+						Region.<MinecraftChunkLocation>builder()
+								.setDirectory(directory)
+								.setSectorSize(4096)
+								.setEntryCount(keyProvider.getKeyCount(regionKey))
+								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
+								.build()
+				), 128
 		));
 	}
 }
