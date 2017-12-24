@@ -101,7 +101,7 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 			this.extension = extension;
 		}
 
-		@Override public IKey<MinecraftChunkLocation> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
+		@Override public MinecraftChunkLocation fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
 			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\." + extension)) {
 				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
 			}

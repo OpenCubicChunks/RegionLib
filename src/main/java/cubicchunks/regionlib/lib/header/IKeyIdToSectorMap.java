@@ -36,7 +36,11 @@ public interface IKeyIdToSectorMap<
 	P extends IHeaderDataEntryProvider<H, K>,
 	K extends IKey<K>> extends Iterable<RegionEntryLocation> {
 
-	Optional<RegionEntryLocation> getEntryLocation(K key);
+	default Optional<RegionEntryLocation> getEntryLocation(K key) {
+		return getEntryLocation(key.getId());
+	}
+
+	Optional<RegionEntryLocation> getEntryLocation(int id);
 
 	void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException;
 

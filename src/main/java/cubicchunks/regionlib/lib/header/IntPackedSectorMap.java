@@ -48,8 +48,8 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		this.entrySectorOffsets = data;
 	}
 
-	@Override public Optional<RegionEntryLocation> getEntryLocation(K key) {
-		int packed = entrySectorOffsets[key.getId()];
+	@Override public Optional<RegionEntryLocation> getEntryLocation(int id) {
+		int packed = entrySectorOffsets[id];
 		if (packed == 0) {
 			return Optional.empty();
 		}

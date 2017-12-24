@@ -17,7 +17,7 @@ public interface IKeyProvider<K extends IKey<K>> {
      *
      * @throws IllegalArgumentException when the supplied regionKey and id pair doesn't correspond to a valid key of type {@code K}.
      */
-    IKey<K> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException;
+    K fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException;
 
     /**
      * Gets the maximum number of keys within the region.

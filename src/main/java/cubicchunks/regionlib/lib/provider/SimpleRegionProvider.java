@@ -127,7 +127,7 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 			new Region.Builder<K>()
 					.setDirectory(directory)
 					.setRegionKey(r)
-					.setEntryCount(keyProv.getKeyCount(r))
+					.setKeyProvider(keyProv)
 					.setSectorSize(sectorSize)
 					.build()
 		);

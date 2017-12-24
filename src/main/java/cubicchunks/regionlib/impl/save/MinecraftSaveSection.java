@@ -50,7 +50,8 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 						Region.<MinecraftChunkLocation>builder()
 								.setDirectory(directory)
 								.setSectorSize(4096)
-								.setEntryCount(keyProvider.getKeyCount(regionKey))
+								.setKeyProvider(keyProvider)
+								.setRegionKey(regionKey)
 								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
 								.build()
 				), 128

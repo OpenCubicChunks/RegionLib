@@ -68,5 +68,5 @@ public interface IRegion<K extends IKey<K>> extends Closeable {
 	/**
 	 * Applies the consumer to all existing region keys
 	 */
-	void forEachKey(CheckedConsumer<? super K, IOException> cons);
+	void forEachKey(CheckedConsumer<? super K, IOException> cons) throws IOException;
 }

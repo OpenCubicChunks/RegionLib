@@ -57,7 +57,7 @@ public class TestRegion {
 		Region<EntryLocation3D> save =
 				new Region.Builder()
 						.setDirectory(path)
-						.setEntryCount(keyProvider.getKeyCount(key.getRegionKey()))
+						.setKeyProvider(keyProvider)
 						.setRegionKey(key.getRegionKey())
 						.setSectorSize(512)
 						.build();
@@ -91,7 +91,7 @@ public class TestRegion {
 			save.close();
 			save = new Region.Builder()
 					.setDirectory(path)
-					.setEntryCount(keyProvider.getKeyCount(key.getRegionKey()))
+					.setKeyProvider(keyProvider)
 					.setRegionKey(key.getRegionKey())
 					.setSectorSize(512)
 					.build();

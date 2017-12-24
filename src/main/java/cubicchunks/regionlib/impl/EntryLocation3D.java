@@ -98,7 +98,7 @@ public class EntryLocation3D implements IKey<EntryLocation3D> {
 
 	public static class Provider implements IKeyProvider<EntryLocation3D> {
 
-		@Override public IKey<EntryLocation3D> fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
+		@Override public EntryLocation3D fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
 			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
 				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
 			}

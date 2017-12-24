@@ -61,11 +61,20 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	private final SeekableByteChannel file;
 	private final List<IHeaderDataEntryProvider<?, K>> headerEntryProviders;
 	private final int sectorSize;
+	private final RegionKey regionKey;
+	private final IKeyProvider<K> keyProvider;
 	private final int keyCount;
 
-	private Region(SeekableByteChannel file, IntPackedSectorMap<K> sectorMap, RegionSectorTracker<K> sectorTracker,
-	               List<IHeaderDataEntryProvider<?, K>> headerEntryProviders, int sectorSize, int keyCount) throws IOException {
-		this.keyCount = keyCount;
+	private Region(SeekableByteChannel file,
+			IntPackedSectorMap<K> sectorMap,
+			RegionSectorTracker<K> sectorTracker,
+			List<IHeaderDataEntryProvider<?, K>> headerEntryProviders,
+			RegionKey regionKey,
+			IKeyProvider<K> keyProvider,
+			int sectorSize) throws IOException {
+		this.regionKey = regionKey;
+		this.keyProvider = keyProvider;
+		this.keyCount = keyProvider.getKeyCount(regionKey);
 		this.file = file;
 		this.headerEntryProviders = headerEntryProviders;
 		this.sectorSize = sectorSize;
@@ -132,8 +141,14 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		return sectorMap.getEntryLocation(key).isPresent();
 	}
 
-	@Override public void forEachKey(CheckedConsumer<? super K, IOException> cons) {
-
+	@Override public void forEachKey(CheckedConsumer<? super K, IOException> cons) throws IOException {
+		for (int id = 0; id < this.keyCount; id++) {
+			int idFinal = id; // because java is stupid
+			K key = sectorMap.getEntryLocation(id).map(loc -> keyProvider.fromRegionAndId(this.regionKey, idFinal)).orElse(null);
+			if (key != null) {
+				cons.accept(key);
+			}
+		}
 	}
 
 
@@ -164,7 +179,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		private int sectorSize = 512;
 		private List<IHeaderDataEntryProvider> headerEntryProviders = new ArrayList<>();
 		private RegionKey regionKey;
-		private int entryCount;
+		private IKeyProvider<K> keyProvider;
 
 		public Builder<K> setDirectory(Path path) {
 			this.directory = path;
@@ -176,8 +191,8 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			return this;
 		}
 
-		public Builder<K> setEntryCount(int entryCount) {
-			this.entryCount = entryCount;
+		public Builder<K> setKeyProvider(IKeyProvider<K> keyProvider) {
+			this.keyProvider = keyProvider;
 			return this;
 		}
 
@@ -198,12 +213,13 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			for (IHeaderDataEntryProvider<?, ?> prov : headerEntryProviders) {
 				entryMapBytes += prov.getEntryByteCount();
 			}
-			int entryMapSectors = ceilDiv(entryCount*entryMapBytes, sectorSize);
+			int entryMapSectors = ceilDiv(keyProvider.getKeyCount(regionKey) * entryMapBytes, sectorSize);
 
-			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, entryCount);
+			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, keyProvider.getKeyCount(regionKey));
 			RegionSectorTracker<K> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
 			this.headerEntryProviders.add(0, sectorMap.headerEntryProvider());
-			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize, entryCount);
+			return new Region(file, sectorMap, regionSectorTracker,
+					this.headerEntryProviders, this.regionKey, keyProvider, this.sectorSize);
 		}
 	}
 }
