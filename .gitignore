@@ -10,7 +10,6 @@ build.py
 bin
 build
 dist
-lib
 out
 run
 target
