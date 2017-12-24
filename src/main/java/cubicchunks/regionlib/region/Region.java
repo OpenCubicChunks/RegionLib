@@ -23,7 +23,7 @@
  */
 package cubicchunks.regionlib.region;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -36,6 +36,7 @@ import cubicchunks.regionlib.CorruptedDataException;
 import cubicchunks.regionlib.IKey;
 import cubicchunks.regionlib.region.header.IHeaderDataEntryProvider;
 import cubicchunks.regionlib.util.WrappedException;
+import sun.misc.IOUtils;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
@@ -54,6 +55,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	private final SeekableByteChannel file;
 	private List<IHeaderDataEntryProvider<?, K>> headerEntryProviders;
 	private final int sectorSize;
+	private Path path;
 
 	private Region(SeekableByteChannel file, IntPackedSectorMap<K> sectorMap, RegionSectorTracker<K> sectorTracker,
 	               List<IHeaderDataEntryProvider<?, K>> headerEntryProviders, int sectorSize) throws IOException {
@@ -68,13 +70,28 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		int size = value.remaining();
 		int sizeWithSizeInfo = size + Integer.BYTES;
 		int numSectors = getSectorNumber(sizeWithSizeInfo);
+
+		//overflow is thrown by this method
 		RegionEntryLocation location = this.regionSectorTracker.reserveForKey(key, numSectors);
 
-		int bytesOffset = location.getOffset()*sectorSize;
+		if (location.isExternal())	{
+			System.out.println(path.toAbsolutePath().toFile().getName());
+			File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + ".E" + key.getId() + ".bin");
+			System.out.println("Saving data to external file: " + f.getAbsoluteFile().toString());
+			if (f.exists()) {
+				//clear the contents of the file before writing
+				PrintWriter writer = new PrintWriter(f);
+				writer.close();
+			}
+			Files.createDirectories(f.toPath().getParent());
+			Files.write(f.toPath(), value.array());
+		} else {
 
-		file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
-		file.write(value);
+			int bytesOffset = location.getOffset() * sectorSize;
 
+			file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
+			file.write(value);
+		}
 		final int id = key.getId();
 		final int sectorMapEntries = key.getKeyCount();
 		int currentHeaderBytes = 0;
@@ -97,6 +114,18 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 					ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
 
+					if (loc.isExternal())	{
+						System.out.println(path.toAbsolutePath().toFile().getName());
+						File f = new File(path.toFile().getParentFile(), "ext" + File.separator + key.getRegionName() + ".E" + key.getId() + ".bin");
+						System.out.println("Reading data from external file: " + f.getAbsoluteFile().toString());
+						if (f.exists())	{
+							byte[] data = IOUtils.readFully(new FileInputStream(f), -1, false);
+							return Optional.of(ByteBuffer.wrap(data));
+						} else {
+							throw new IllegalStateException("External data doesn't exist! Path: " + f.getAbsoluteFile().toString());
+						}
+					}
+
 					file.position(sectorOffset*sectorSize).read(buf);
 
 					int dataLength = buf.getInt(0);
@@ -115,6 +144,11 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		} catch (WrappedException e) {
 			throw (IOException) e.get();
 		}
+	}
+
+	public Region setPath(Path path)	{
+		this.path = path;
+		return this;
 	}
 
 	/**
@@ -177,7 +211,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, entriesPerRegion);
 			RegionSectorTracker<K> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
 			this.headerEntryProviders.add(0, sectorMap.headerEntryProvider());
-			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize);
+			return new Region(file, sectorMap, regionSectorTracker, this.headerEntryProviders, this.sectorSize).setPath(path);
 		}
 	}
 }
