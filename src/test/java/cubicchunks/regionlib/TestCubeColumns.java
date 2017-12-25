@@ -116,7 +116,7 @@ public class TestCubeColumns {
 	}
 
 	private ByteBuffer getData(Random rnd) {
-		int size = rnd.nextInt(100);
+		int size = rnd.nextInt(1000);
 		byte[] arr = new byte[size];
 		rnd.nextBytes(arr);
 		return ByteBuffer.wrap(arr);

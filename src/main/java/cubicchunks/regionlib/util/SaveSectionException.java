@@ -35,6 +35,7 @@ public class SaveSectionException extends IOException {
     public SaveSectionException(String description, Collection<? extends Throwable> causes) {
         super(description);
         this.causes = causes;
+        this.printStackTrace();
     }
 
     public Collection<Throwable> getCauses() {

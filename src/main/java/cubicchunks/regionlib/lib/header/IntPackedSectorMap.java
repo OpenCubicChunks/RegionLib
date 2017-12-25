@@ -57,6 +57,12 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	}
 
 	@Override public void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException {
+		if (location.getSize() > MAX_SIZE) {
+			throw new IOException("Max supported size " + MAX_SIZE + " but requested " + location.getSize());
+		}
+		if (location.getOffset() > MAX_OFFSET) {
+			throw new IOException("Max supported offset " + MAX_OFFSET + " but requested " + location.getOffset());
+		}
 		entrySectorOffsets[key.getId()] = packed(location);
 	}
 

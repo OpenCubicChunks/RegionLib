@@ -24,9 +24,12 @@
 package cubicchunks.regionlib.impl.save;
 
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
 
 import cubicchunks.regionlib.api.storage.SaveSection;
 import cubicchunks.regionlib.impl.EntryLocation2D;
+import cubicchunks.regionlib.lib.ExtRegion;
 import cubicchunks.regionlib.lib.provider.CachedRegionProvider;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
@@ -41,12 +44,26 @@ public class SaveSection2D extends SaveSection<SaveSection2D, EntryLocation2D> {
 		super(regionProvider);
 	}
 
+	/**
+	 * Creates a 2D save section with a customized IRegionProvider
+	 *
+	 * @param regionProvider The region provider
+	 */
+	public SaveSection2D(IRegionProvider<EntryLocation2D>... regionProvider) {
+		super(Arrays.asList(regionProvider));
+	}
+
 
 	public static SaveSection2D createAt(Path directory) {
 		return new SaveSection2D(
 				new CachedRegionProvider<>(
 						SimpleRegionProvider.createDefault(new EntryLocation2D.Provider(), directory, 512),
 						256
+				),
+				new CachedRegionProvider<>(
+						new SimpleRegionProvider<>(new EntryLocation2D.Provider(), directory,
+								(keyProvider, regionKey) -> new ExtRegion<>(directory, Collections.emptyList(), keyProvider, regionKey)
+						), 256
 				));
 	}
 }
