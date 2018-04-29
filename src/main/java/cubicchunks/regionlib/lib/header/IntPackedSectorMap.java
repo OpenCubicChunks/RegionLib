@@ -53,7 +53,6 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		if (packed == 0) {
 			return Optional.empty();
 		}
-		System.err.println(packed);
 		return Optional.of(new RegionEntryLocation(unpackOffset(packed), unpackSize(packed)));
 	}
 
