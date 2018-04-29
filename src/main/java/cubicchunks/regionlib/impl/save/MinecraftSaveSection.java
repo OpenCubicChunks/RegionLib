@@ -44,9 +44,9 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 		super(regionProvider);
 	}
 
-	public static MinecraftSaveSection createAt(Path directory) {
+	public static MinecraftSaveSection createAt(Path directory, MinecraftRegionType type) {
 		return new MinecraftSaveSection(new CachedRegionProvider<MinecraftChunkLocation>(
-				new SimpleRegionProvider<>(new MinecraftChunkLocation.Provider("mcr"), directory, (keyProvider, regionKey) ->
+				new SimpleRegionProvider<>(new MinecraftChunkLocation.Provider(type.name().toLowerCase()), directory, (keyProvider, regionKey) ->
 						Region.<MinecraftChunkLocation>builder()
 								.setDirectory(directory)
 								.setSectorSize(4096)
@@ -56,5 +56,9 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 								.build()
 				), 128
 		));
+	}
+
+	public enum MinecraftRegionType {
+		MCR, MCA
 	}
 }

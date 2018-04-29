@@ -102,16 +102,16 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 		}
 
 		@Override public MinecraftChunkLocation fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
-			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\." + extension)) {
-				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
+			if (!regionKey.getName().matches("r\\.-?\\d+\\.-?\\d+\\." + extension)) {
+				throw new IllegalArgumentException("Invalid name " + regionKey.getName() + ", expected pattern r\\.-?\\d+\\.-?\\d+\\." + extension);
 			}
 			String[] s = regionKey.getName().split("\\.");
 
-			int relativeX = id >>> LOC_BITS;
-			int relativeZ = id & LOC_BITMASK;
+			int relativeX = id & LOC_BITMASK;
+			int relativeZ = id >>> LOC_BITS;
 			return new MinecraftChunkLocation(
-					Integer.parseInt(s[0]) << LOC_BITS | relativeX,
-					Integer.parseInt(s[1]) << LOC_BITS | relativeZ, extension);
+					Integer.parseInt(s[1]) << LOC_BITS | relativeX,
+					Integer.parseInt(s[2]) << LOC_BITS | relativeZ, extension);
 		}
 
 		@Override public int getKeyCount(RegionKey key) {
