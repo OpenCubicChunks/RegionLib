@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.sun.istack.internal.Nullable;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
@@ -83,7 +82,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		this.regionSectorTracker = sectorTracker;
 	}
 
-	@Override public synchronized void writeValue(K key, @Nullable ByteBuffer value) throws IOException {
+	@Override public synchronized void writeValue(K key, ByteBuffer value) throws IOException {
 		if (value == null) {
 			this.regionSectorTracker.removeKey(key);
 			updateHeaders(key);

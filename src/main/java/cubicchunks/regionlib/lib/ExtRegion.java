@@ -23,7 +23,6 @@
  */
 package cubicchunks.regionlib.lib;
 
-import com.sun.istack.internal.Nullable;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntry;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
@@ -44,12 +43,8 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 // TODO: Optimize?
 public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
@@ -89,7 +84,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         });
     }
 
-    @Override public void writeValue(K key, @Nullable ByteBuffer value) throws IOException {
+    @Override public void writeValue(K key, ByteBuffer value) throws IOException {
         Path file = directory.resolve(String.valueOf(key.getId()));
         if (!Files.exists(file)) {
             if (value == null) {

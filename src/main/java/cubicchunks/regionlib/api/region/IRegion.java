@@ -48,7 +48,7 @@ public interface IRegion<K extends IKey<K>> extends Closeable {
 	 * Stores a value at a key within this region
 	 *
 	 * @param key A key within this region
-	 * @param value The value to store
+	 * @param value The value to store. Null to remove existing value.
 	 *
 	 * @throws UnsupportedDataException if the data cannot be written due to internal constraints of the storage format. The stored data must remain
 	 * unchanged after this exception is thrown
