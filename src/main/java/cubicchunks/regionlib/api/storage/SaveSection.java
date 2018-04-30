@@ -98,7 +98,8 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 				toWrite = null;
 			}
 		}
-		throw new SaveSectionException("No region provider supporting key " + key + " with data size " + value.capacity(), exceptions);
+		if (!exceptions.isEmpty())
+			throw new SaveSectionException("No region provider supporting key " + key + " with data size " + value.capacity(), exceptions);
 	}
 
 	/**
