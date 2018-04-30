@@ -29,6 +29,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.util.Iterator;
 import java.util.Optional;
 
+import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.lib.RegionEntryLocation;
 
@@ -58,10 +59,10 @@ public class IntPackedSectorMap<K extends IKey<K>>
 
 	@Override public void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException {
 		if (location.getSize() > MAX_SIZE) {
-			throw new IOException("Max supported size " + MAX_SIZE + " but requested " + location.getSize());
+			throw new UnsupportedDataException("Max supported size " + MAX_SIZE + " but requested " + location.getSize());
 		}
 		if (location.getOffset() > MAX_OFFSET) {
-			throw new IOException("Max supported offset " + MAX_OFFSET + " but requested " + location.getOffset());
+			throw new UnsupportedDataException("Max supported offset " + MAX_OFFSET + " but requested " + location.getOffset());
 		}
 		entrySectorOffsets[key.getId()] = packed(location);
 	}

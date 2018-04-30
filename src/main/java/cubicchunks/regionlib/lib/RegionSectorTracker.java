@@ -41,6 +41,13 @@ public class RegionSectorTracker<K extends IKey<K>> {
 		this.sectorMap = sectorMap;
 	}
 
+	public void removeKey(K key) throws IOException {
+		Optional<RegionEntryLocation> existing = sectorMap.getEntryLocation(key);
+		RegionEntryLocation loc = new RegionEntryLocation(0, 0);
+		this.sectorMap.setOffsetAndSize(key, loc);
+		this.updateUsedSectorsFor(existing.orElse(null), loc);
+	}
+
 	/**
 	 * Returns offset for the given key and requestedSize, and reserves these sectors
 	 */

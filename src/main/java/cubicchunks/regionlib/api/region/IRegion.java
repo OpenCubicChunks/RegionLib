@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
+import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.util.CheckedConsumer;
@@ -48,6 +49,9 @@ public interface IRegion<K extends IKey<K>> extends Closeable {
 	 *
 	 * @param key A key within this region
 	 * @param value The value to store
+	 *
+	 * @throws UnsupportedDataException if the data cannot be written due to internal constraints of the storage format. The stored data must remain
+	 * unchanged after this exception is thrown
 	 */
 	void writeValue(K key, ByteBuffer value) throws IOException;
 

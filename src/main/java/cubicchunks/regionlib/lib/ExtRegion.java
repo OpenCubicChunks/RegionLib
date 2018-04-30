@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.lib;
 
+import com.sun.istack.internal.Nullable;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntry;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
@@ -88,11 +89,18 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         });
     }
 
-    @Override public void writeValue(K key, ByteBuffer value) throws IOException {
+    @Override public void writeValue(K key, @Nullable ByteBuffer value) throws IOException {
         Path file = directory.resolve(String.valueOf(key.getId()));
         if (!Files.exists(file)) {
+            if (value == null) {
+                return;
+            }
             Files.createFile(file);
+        } else if (value == null) {
+            Files.delete(file);
+            return;
         }
+
         try (OutputStream os = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
             for (IHeaderDataEntryProvider<?, K> h : headerData) {
                 IHeaderDataEntry entry = h.apply(key);

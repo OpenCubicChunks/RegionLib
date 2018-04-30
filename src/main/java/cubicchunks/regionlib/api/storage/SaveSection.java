@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.util.SaveSectionException;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.IRegionProvider;
@@ -79,16 +80,22 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	 * @throws IOException when an unexpected IO error occurs
 	 */
 	public void save(K key, ByteBuffer value) throws IOException {
-		List<IOException> exceptions = null;
+		ByteBuffer toWrite = value;
+		List<UnsupportedDataException> exceptions = new ArrayList<>();
 		for (IRegionProvider<K> prov : regionProviders) {
-			try {
-				prov.forRegion(key, r -> r.writeValue(key, value));
-				return;
-			} catch (IOException ex) {
-				if (exceptions == null) {
-					exceptions = new ArrayList<>();
+			// variables used in lambdas must to be "effectively final"
+			ByteBuffer toWriteFinal = toWrite;
+			prov.forRegion(key, r -> {
+				try {
+					r.writeValue(key, toWriteFinal);
+				} catch (UnsupportedDataException ex) {
+					exceptions.add(ex);
+					r.writeValue(key, null); // remove if write not successful
 				}
-				exceptions.add(ex);
+			});
+			// if successfully written, write null to all other region types
+			if (exceptions.isEmpty()) {
+				toWrite = null;
 			}
 		}
 		throw new SaveSectionException("No region provider supporting key " + key + " with data size " + value.capacity(), exceptions);
@@ -133,8 +140,6 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 				int max = i;
 				p.forAllRegions(reg -> {
 					reg.forEachKey(key -> {
-						boolean prevContains = false;
-
 						// cancel if any of the providers before contain this key
 						for (int j = 0; j < max; j++) {
 							K superKey = regionProviders.get(j)

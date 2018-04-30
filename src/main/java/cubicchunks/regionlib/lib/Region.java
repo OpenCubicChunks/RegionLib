@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.sun.istack.internal.Nullable;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
@@ -82,18 +83,27 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		this.regionSectorTracker = sectorTracker;
 	}
 
-	@Override public synchronized void writeValue(K key, ByteBuffer value) throws IOException {
+	@Override public synchronized void writeValue(K key, @Nullable ByteBuffer value) throws IOException {
+		if (value == null) {
+			this.regionSectorTracker.removeKey(key);
+			updateHeaders(key);
+			return;
+		}
 		int size = value.remaining();
 		int sizeWithSizeInfo = size + Integer.BYTES;
 		int numSectors = getSectorNumber(sizeWithSizeInfo);
+		// this may throw UnsupportedDataException if data is too big
 		RegionEntryLocation location = this.regionSectorTracker.reserveForKey(key, numSectors);
 
 		int bytesOffset = location.getOffset()*sectorSize;
 
 		file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
 		file.write(value);
+		updateHeaders(key);
+	}
 
-		final int id = key.getId();
+	private void updateHeaders(K key) throws IOException {
+		int id = key.getId();
 		int currentHeaderBytes = 0;
 		for (IHeaderDataEntryProvider<?, K> prov : headerEntryProviders) {
 			ByteBuffer buf = ByteBuffer.allocate(prov.getEntryByteCount());
