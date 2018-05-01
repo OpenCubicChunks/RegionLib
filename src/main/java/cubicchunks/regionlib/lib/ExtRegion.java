@@ -57,9 +57,9 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
 
     private final BitSet exists;
 
-    public ExtRegion(Path directory, List<IHeaderDataEntryProvider<?, K>> headerData, IKeyProvider<K> keyProvider, RegionKey regionKey)
+    public ExtRegion(Path saveDirectory, List<IHeaderDataEntryProvider<?, K>> headerData, IKeyProvider<K> keyProvider, RegionKey regionKey)
             throws IOException {
-        this.directory = directory.resolve(regionKey.getName() + ".ext");
+        this.directory = saveDirectory.resolve(regionKey.getName() + ".ext");
         if (!Files.exists(this.directory)) {
             Files.createDirectories(this.directory);
         }
@@ -72,7 +72,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         }
         this.totalHeaderSize = headerSize;
         this.exists = new BitSet(keyProvider.getKeyCount(regionKey));
-        Files.list(directory).forEach(p -> {
+        Files.list(this.directory).forEach(p -> {
             String name = p.getFileName().toString();
             try {
                 int i = Integer.parseInt(name);
