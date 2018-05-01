@@ -88,6 +88,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 			prov.forRegion(key, r -> {
 				try {
 					r.writeValue(key, toWriteFinal);
+					exceptions.clear(); // clear exceptions on success
 				} catch (UnsupportedDataException ex) {
 					exceptions.add(ex);
 					r.writeValue(key, null); // remove if write not successful
