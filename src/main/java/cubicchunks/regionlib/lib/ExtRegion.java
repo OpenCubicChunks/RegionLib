@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 // TODO: Optimize?
 public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
@@ -60,9 +61,6 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
     public ExtRegion(Path saveDirectory, List<IHeaderDataEntryProvider<?, K>> headerData, IKeyProvider<K> keyProvider, RegionKey regionKey)
             throws IOException {
         this.directory = saveDirectory.resolve(regionKey.getName() + ".ext");
-        if (!Files.exists(this.directory)) {
-            Files.createDirectories(this.directory);
-        }
         this.headerData = headerData;
         this.keyProvider = keyProvider;
         this.regionKey = regionKey;
@@ -72,19 +70,27 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         }
         this.totalHeaderSize = headerSize;
         this.exists = new BitSet(keyProvider.getKeyCount(regionKey));
-        Files.list(this.directory).forEach(p -> {
-            String name = p.getFileName().toString();
-            try {
-                int i = Integer.parseInt(name);
-                if (i >= 0 && i < keyProvider.getKeyCount(regionKey)) {
-                    exists.set(i);
+        if (!Files.exists(this.directory)) {
+            return;
+        }
+        try(Stream<Path> stream = Files.list(this.directory)) {
+            stream.forEach(p -> {
+                String name = p.getFileName().toString();
+                try {
+                    int i = Integer.parseInt(name);
+                    if (i >= 0 && i < keyProvider.getKeyCount(regionKey)) {
+                        exists.set(i);
+                    }
+                } catch (NumberFormatException ex) {
                 }
-            } catch (NumberFormatException ex) {
-            }
-        });
+            });
+        }
     }
 
     @Override public void writeValue(K key, ByteBuffer value) throws IOException {
+        if (!Files.exists(this.directory)) {
+            Files.createDirectories(this.directory);
+        }
         Path file = directory.resolve(String.valueOf(key.getId()));
         if (!Files.exists(file)) {
             if (value == null) {
