@@ -92,7 +92,6 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 	}
 
 	@Override public IRegion<K> getRegion(K key) throws IOException {
-		Path regionPath = directory.resolve(key.getRegionKey().getName());
 		return regionBuilder.create(keyProvider, key.getRegionKey());
 	}
 
@@ -106,16 +105,22 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 	}
 
 	@Override public void forAllRegions(CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException {
-		Iterator<Path> it = allRegions();
+		Iterator<RegionKey> it = allRegions();
 		while (it.hasNext()) {
-			Path path = it.next();
-			consumer.accept(regionBuilder.create(keyProvider, new RegionKey(path.getFileName().toString())));
+			RegionKey key = it.next();
+			if (!keyProvider.isValid(key)) {
+				continue;
+			}
+			consumer.accept(regionBuilder.create(keyProvider, key));
 		}
 	}
 
-	protected Iterator<Path> allRegions() throws IOException {
+	private Iterator<RegionKey> allRegions() throws IOException {
 		return Files.list(directory)
 			.map(Path::getFileName)
+			.map(Path::toString)
+			.map(RegionKey::new)
+			.filter(keyProvider::isValid)
 			.iterator();
 	}
 
