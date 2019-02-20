@@ -102,7 +102,7 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 		}
 
 		@Override public MinecraftChunkLocation fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
-			if (!regionKey.getName().matches("r\\.-?\\d+\\.-?\\d+\\." + extension)) {
+			if (!isValid(regionKey)) {
 				throw new IllegalArgumentException("Invalid name " + regionKey.getName() + ", expected pattern r\\.-?\\d+\\.-?\\d+\\." + extension);
 			}
 			String[] s = regionKey.getName().split("\\.");
@@ -116,6 +116,10 @@ public class MinecraftChunkLocation implements IKey<MinecraftChunkLocation> {
 
 		@Override public int getKeyCount(RegionKey key) {
 			return ENTRIES_PER_REGION;
+		}
+
+		@Override public boolean isValid(RegionKey key) {
+			return key.getName().matches("r\\.-?\\d+\\.-?\\d+\\." + extension);
 		}
 	}
 }

@@ -88,7 +88,7 @@ public class EntryLocation2D implements IKey<EntryLocation2D> {
 	public static class Provider implements IKeyProvider<EntryLocation2D> {
 
 		@Override public EntryLocation2D fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
-			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\.2dr")) {
+			if (!isValid(regionKey)) {
 				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
 			}
 			String[] s = regionKey.getName().split("\\.");
@@ -102,6 +102,10 @@ public class EntryLocation2D implements IKey<EntryLocation2D> {
 
 		@Override public int getKeyCount(RegionKey key) {
 			return EntryLocation2D.ENTRIES_PER_REGION;
+		}
+
+		@Override public boolean isValid(RegionKey key) {
+			return key.getName().matches("-?\\d+\\.-?\\d+\\.2dr");
 		}
 	}
 }

@@ -30,6 +30,7 @@ import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
 import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.Utils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -89,7 +90,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
 
     @Override public void writeValue(K key, ByteBuffer value) throws IOException {
         if (!Files.exists(this.directory)) {
-            Files.createDirectories(this.directory);
+            Utils.createDirectories(this.directory);
         }
         Path file = directory.resolve(String.valueOf(key.getId()));
         if (!Files.exists(file)) {

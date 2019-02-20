@@ -42,7 +42,9 @@ import cubicchunks.regionlib.util.CheckedFunction;
  * An implementation of IRegionProvider that caches opened Regions
  *
  * @param <K> The key type
+ * @deprecated Use {@link SharedCachedRegionProvider}
  */
+@Deprecated
 public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<K> {
 
 	private final IRegionProvider<K> sourceProvider;

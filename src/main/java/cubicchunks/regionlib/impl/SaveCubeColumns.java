@@ -32,6 +32,7 @@ import java.util.Optional;
 
 import cubicchunks.regionlib.impl.save.SaveSection2D;
 import cubicchunks.regionlib.impl.save.SaveSection3D;
+import cubicchunks.regionlib.util.Utils;
 
 /**
  * A save for 3d and 2d structures, like Cubes and Columns in CubicChunks.
@@ -105,13 +106,13 @@ public class SaveCubeColumns implements Closeable {
      * @throws IOException when an unexpected IO error occurs
 	 */
 	public static SaveCubeColumns create(Path directory) throws IOException {
-		Files.createDirectories(directory);
+		Utils.createDirectories(directory);
 
 		Path part2d = directory.resolve("region2d");
-		Files.createDirectories(part2d);
+		Utils.createDirectories(part2d);
 
 		Path part3d = directory.resolve("region3d");
-		Files.createDirectories(part3d);
+		Utils.createDirectories(part3d);
 
 		SaveSection2D section2d = SaveSection2D.createAt(part2d);
 		SaveSection3D section3d = SaveSection3D.createAt(part3d);

@@ -99,7 +99,7 @@ public class EntryLocation3D implements IKey<EntryLocation3D> {
 	public static class Provider implements IKeyProvider<EntryLocation3D> {
 
 		@Override public EntryLocation3D fromRegionAndId(RegionKey regionKey, int id) throws IllegalArgumentException {
-			if (!regionKey.getName().matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr")) {
+			if (!isValid(regionKey)) {
 				throw new IllegalArgumentException("Invalid name " + regionKey.getName());
 			}
 			String[] s = regionKey.getName().split("\\.");
@@ -115,6 +115,10 @@ public class EntryLocation3D implements IKey<EntryLocation3D> {
 
 		@Override public int getKeyCount(RegionKey key) {
 			return ENTRIES_PER_REGION;
+		}
+
+		@Override public boolean isValid(RegionKey key) {
+			return key.getName().matches("-?\\d+\\.-?\\d+\\.-?\\d+\\.3dr");
 		}
 	}
 }
