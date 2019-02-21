@@ -47,6 +47,14 @@ public class SaveCubeColumns implements Closeable {
 		this.saveSection3D = saveSection3D;
 	}
 
+	public SaveSection2D getSaveSection2D() {
+		return saveSection2D;
+	}
+
+	public SaveSection3D getSaveSection3D() {
+		return saveSection3D;
+	}
+
 	/**
 	 * Schedules entry for writing
 	 *
