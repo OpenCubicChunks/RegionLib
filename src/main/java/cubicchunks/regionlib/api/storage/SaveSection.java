@@ -137,6 +137,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 			if (i == 0) {
 				p.forAllRegions(reg -> {
 					reg.forEachKey(cons);
+					reg.close();
 				});
 			} else {
 				int max = i;
@@ -154,13 +155,13 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 						}
 						cons.accept(key);
 					});
+					reg.close();
 				});
 			}
 		}
 	}
 
 	public boolean hasEntry(K key) throws IOException {
-		boolean found = false;
 		for (IRegionProvider<K> prov : this.regionProviders) {
 			if (prov.fromExistingRegion(key, r -> r.hasValue(key)).orElse(false)) {
 				return true;
