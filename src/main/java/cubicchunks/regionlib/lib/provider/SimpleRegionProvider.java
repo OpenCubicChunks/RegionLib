@@ -23,20 +23,21 @@
  */
 package cubicchunks.regionlib.lib.provider;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Iterator;
-import java.util.Optional;
-
-import cubicchunks.regionlib.api.region.key.IKey;
-import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.IRegion;
+import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
 import cubicchunks.regionlib.lib.Region;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * A simple implementation of IRegionProvider, this is intended to be used together with CachedRegionProvider or other
@@ -105,23 +106,20 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 	}
 
 	@Override public void forAllRegions(CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException {
-		Iterator<RegionKey> it = allRegions();
-		while (it.hasNext()) {
-			RegionKey key = it.next();
-			if (!keyProvider.isValid(key)) {
-				continue;
+		try (Stream<Path> stream = Files.list(directory)) {
+			Iterator<RegionKey> it = stream.map(Path::getFileName)
+				.map(Path::toString)
+				.map(RegionKey::new)
+				.filter(keyProvider::isValid)
+				.iterator();
+			while (it.hasNext()) {
+				RegionKey key = it.next();
+				if (!keyProvider.isValid(key)) {
+					continue;
+				}
+				consumer.accept(regionBuilder.create(keyProvider, key));
 			}
-			consumer.accept(regionBuilder.create(keyProvider, key));
 		}
-	}
-
-	private Iterator<RegionKey> allRegions() throws IOException {
-		return Files.list(directory)
-			.map(Path::getFileName)
-			.map(Path::toString)
-			.map(RegionKey::new)
-			.filter(keyProvider::isValid)
-			.iterator();
 	}
 
 	@Override public void close() {
