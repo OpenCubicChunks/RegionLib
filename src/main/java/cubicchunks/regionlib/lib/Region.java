@@ -166,6 +166,13 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	}
 
 	@Override public void close() throws IOException {
+		if (file.size() % sectorSize != 0) {
+			int extra = (int) (sectorSize - (file.size() % sectorSize));
+			ByteBuffer buffer = ByteBuffer.allocateDirect(extra);
+			this.file.position(this.file.size());
+			this.file.write(buffer);
+			assert this.file.size() % sectorSize == 0;
+		}
 		this.file.close();
 	}
 

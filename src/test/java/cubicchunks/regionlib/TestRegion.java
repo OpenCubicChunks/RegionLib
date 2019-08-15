@@ -55,7 +55,7 @@ public class TestRegion {
 		IKeyProvider<EntryLocation3D> keyProvider = new EntryLocation3D.Provider();
 		EntryLocation3D key = new EntryLocation3D(0, 0, 0);
 		Region<EntryLocation3D> save =
-				new Region.Builder()
+				new Region.Builder<EntryLocation3D>()
 						.setDirectory(path)
 						.setKeyProvider(keyProvider)
 						.setRegionKey(key.getRegionKey())
@@ -89,7 +89,7 @@ public class TestRegion {
 
 			// re-open the Region
 			save.close();
-			save = new Region.Builder()
+			save = new Region.Builder<EntryLocation3D>()
 					.setDirectory(path)
 					.setKeyProvider(keyProvider)
 					.setRegionKey(key.getRegionKey())
