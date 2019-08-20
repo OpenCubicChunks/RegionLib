@@ -26,8 +26,14 @@ package cubicchunks.regionlib.lib.header;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.key.IKey;
@@ -44,9 +50,28 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	private static final int MAX_OFFSET = OFFSET_MASK;
 
 	private final int[] entrySectorOffsets;
+	private final List<SpecialSectorMapEntry<K>> specialEntries;
 
 	public IntPackedSectorMap(int[] data) {
+		this(data, Collections.emptyList());
+	}
+
+	public IntPackedSectorMap(int[] data, List<SpecialSectorMapEntry<K>> specialEntries) {
 		this.entrySectorOffsets = data;
+		this.specialEntries = specialEntries;
+	}
+
+	@Override public Optional<Function<K, ByteBuffer>> trySpecialValue(K key) {
+		if (specialEntries.isEmpty()) {
+			return Optional.empty();
+		}
+		int packed = entrySectorOffsets[key.getId()];
+		for (SpecialSectorMapEntry<K> entry : specialEntries) {
+			if (entry.rawValue == packed) {
+				return Optional.of(entry.reader);
+			}
+		}
+		return Optional.empty();
 	}
 
 	@Override public Optional<RegionEntryLocation> getEntryLocation(int id) {
@@ -57,14 +82,49 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		return Optional.of(new RegionEntryLocation(unpackOffset(packed), unpackSize(packed)));
 	}
 
-	@Override public void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException {
+	@Override public Optional<BiConsumer<K, ByteBuffer>> setOffsetAndSize(K key, RegionEntryLocation location) throws IOException {
 		if (location.getSize() > MAX_SIZE) {
 			throw new UnsupportedDataException("Max supported size " + MAX_SIZE + " but requested " + location.getSize());
 		}
 		if (location.getOffset() > MAX_OFFSET) {
 			throw new UnsupportedDataException("Max supported offset " + MAX_OFFSET + " but requested " + location.getOffset());
 		}
-		entrySectorOffsets[key.getId()] = packed(location);
+		BiConsumer<K, ByteBuffer> colflictHandler = null;
+		int packed = packed(location);
+		if (!specialEntries.isEmpty()) {
+			for (SpecialSectorMapEntry<K> specialEntry : specialEntries) {
+				if (specialEntry.rawValue == packed) {
+					colflictHandler = specialEntry.conflictHandler;
+				}
+			}
+		}
+		entrySectorOffsets[key.getId()] = packed;
+		return Optional.ofNullable(colflictHandler);
+	}
+
+	@Override public boolean isSpecial(RegionEntryLocation loc) {
+		if (this.specialEntries.isEmpty()) {
+			return false;
+		}
+		int packed = packed(loc);
+		for (SpecialSectorMapEntry<K> specialEntry : specialEntries) {
+			if (specialEntry.rawValue == packed) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override public void setSpecial(K key, Object marker) {
+		if (!specialEntries.isEmpty()) {
+			for (SpecialSectorMapEntry<K> specialEntry : specialEntries) {
+				if (specialEntry.marker == marker) {
+					entrySectorOffsets[key.getId()] = specialEntry.rawValue;
+					return;
+				}
+			}
+		}
+		throw new IllegalArgumentException("Unknown marker object" + marker);
 	}
 
 	@Override public Iterator<RegionEntryLocation> iterator() {
@@ -113,8 +173,9 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		return location.getSize() | (location.getOffset() << SIZE_BITS);
 	}
 
-	public static <L extends IKey<L>> IntPackedSectorMap<L> readOrCreate(
-		SeekableByteChannel file, int entriesPerRegion) throws IOException {
+
+	public static <K extends IKey<K>> IntPackedSectorMap<K> readOrCreate(
+			SeekableByteChannel file, int entriesPerRegion, List<SpecialSectorMapEntry<K>> specialEntries) throws IOException {
 		int entryMappingBytes = Integer.BYTES*entriesPerRegion;
 		// add a new blank header if this file is new
 		if (file.size() < entryMappingBytes) {
@@ -130,6 +191,25 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		buffer.flip();
 		buffer.asIntBuffer().get(entrySectorOffsets);
 
-		return new IntPackedSectorMap<>(entrySectorOffsets);
+		return new IntPackedSectorMap<>(entrySectorOffsets, specialEntries);
+	}
+
+	public static <L extends IKey<L>> IntPackedSectorMap<L> readOrCreate(SeekableByteChannel file, int entriesPerRegion) throws IOException {
+		return readOrCreate(file, entriesPerRegion, Collections.emptyList());
+	}
+
+	public static class SpecialSectorMapEntry<K extends IKey<K>> {
+		private final Object marker;
+		private final int rawValue;
+		private final Function<K, ByteBuffer> reader;
+		private final BiConsumer<K, ByteBuffer> conflictHandler;
+
+		public SpecialSectorMapEntry(Object marker, int rawValue, Function<K, ByteBuffer> reader,
+				BiConsumer<K, ByteBuffer> conflictHandler) {
+			this.marker = marker;
+			this.rawValue = rawValue;
+			this.reader = reader;
+			this.conflictHandler = conflictHandler;
+		}
 	}
 }

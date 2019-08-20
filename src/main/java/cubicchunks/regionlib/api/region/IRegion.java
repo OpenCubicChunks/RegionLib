@@ -55,6 +55,8 @@ public interface IRegion<K extends IKey<K>> extends Closeable {
 	 */
 	void writeValue(K key, ByteBuffer value) throws IOException;
 
+	void writeSpecial(K key, Object marker) throws IOException;
+
 	/**
 	 * Loads a value at a key if there was something stored there before, within this region
 	 *

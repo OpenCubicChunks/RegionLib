@@ -23,6 +23,22 @@
  */
 package cubicchunks.regionlib.lib;
 
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
+
+import cubicchunks.regionlib.api.region.IRegion;
+import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.api.region.key.RegionKey;
+import cubicchunks.regionlib.lib.header.IKeyIdToSectorMap;
+import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
+import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CorruptedDataException;
+import cubicchunks.regionlib.util.WrappedException;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -31,22 +47,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import cubicchunks.regionlib.api.region.IRegionProvider;
-import cubicchunks.regionlib.api.region.key.IKeyProvider;
-import cubicchunks.regionlib.api.region.key.RegionKey;
-import cubicchunks.regionlib.util.CorruptedDataException;
-import cubicchunks.regionlib.api.region.key.IKey;
-import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
-import cubicchunks.regionlib.lib.header.IKeyIdToSectorMap;
-import cubicchunks.regionlib.api.region.IRegion;
-import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
-import cubicchunks.regionlib.util.CheckedConsumer;
-import cubicchunks.regionlib.util.WrappedException;
-
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.READ;
-import static java.nio.file.StandardOpenOption.WRITE;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * A basic region implementation
@@ -101,6 +103,12 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		updateHeaders(key);
 	}
 
+	@Override public void writeSpecial(K key, Object marker) throws IOException {
+		this.regionSectorTracker.removeKey(key);
+		this.sectorMap.setSpecial(key, marker);
+		updateHeaders(key);
+	}
+
 	private void updateHeaders(K key) throws IOException {
 		int id = key.getId();
 		int currentHeaderBytes = 0;
@@ -116,31 +124,38 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	@Override public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
 		// a hack because Optional can't throw checked exceptions
 		try {
-			return sectorMap.getEntryLocation(key).flatMap(loc -> {
-				try {
-					int sectorOffset = loc.getOffset();
-					int sectorCount = loc.getSize();
-
-					ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
-
-					file.position(sectorOffset*sectorSize).read(buf);
-
-					int dataLength = buf.getInt(0);
-					if (dataLength > sectorCount*sectorSize) {
-						throw new CorruptedDataException("Expected data size max" + sectorCount*sectorSize + " but found " + dataLength);
-					}
-
-					ByteBuffer bytes = ByteBuffer.allocate(dataLength);
-					file.read(bytes);
-					bytes.flip();
-					return Optional.of(bytes);
-				} catch (IOException e) {
-					throw new WrappedException(e);
-				}
-			});
+			return sectorMap.trySpecialValue(key)
+					.map(reader -> Optional.of(reader.apply(key)))
+					.orElseGet(() -> doReadKey(key));
 		} catch (WrappedException e) {
 			throw (IOException) e.get();
 		}
+	}
+
+	private Optional<ByteBuffer> doReadKey(K key) {
+		return sectorMap.getEntryLocation(key).flatMap(loc -> {
+			try {
+				int sectorOffset = loc.getOffset();
+				int sectorCount = loc.getSize();
+
+				ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
+
+				file.position(sectorOffset * sectorSize).read(buf);
+
+				int dataLength = buf.getInt(0);
+				if (dataLength > sectorCount * sectorSize) {
+					throw new CorruptedDataException(
+							"Expected data size max" + sectorCount * sectorSize + " but found " + dataLength);
+				}
+
+				ByteBuffer bytes = ByteBuffer.allocate(dataLength);
+				file.read(bytes);
+				bytes.flip();
+				return Optional.of(bytes);
+			} catch (IOException e) {
+				throw new WrappedException(e);
+			}
+		});
 	}
 
 	/**
@@ -193,9 +208,10 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 		private Path directory;
 		private int sectorSize = 512;
-		private List<IHeaderDataEntryProvider> headerEntryProviders = new ArrayList<>();
+		private List<IHeaderDataEntryProvider<?, K>> headerEntryProviders = new ArrayList<>();
 		private RegionKey regionKey;
 		private IKeyProvider<K> keyProvider;
+		private List<IntPackedSectorMap.SpecialSectorMapEntry<K>> specialEntries = new ArrayList<>();
 
 		public Builder<K> setDirectory(Path path) {
 			this.directory = path;
@@ -222,6 +238,24 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			return this;
 		}
 
+		/**
+		 * Creates a special {@link IntPackedSectorMap} entry type, with custom read function.
+		 *
+		 * The supplied conflict handler should handle conflicts in such way that the supplied reader will return the previously written value,
+		 * or throw an exception is this is not possible.
+		 *
+		 * @param marker a marker object used to specify writing special value
+		 * @param value the raw int header value
+		 * @param specialReader data reader for this special value
+		 * @param writeConflictHandler function for handling conflicts when writing real data with the same sectormap value.
+		 *
+		 */
+		public Builder<K> addSpecialSectorMapEntry(Object marker, int value, Function<K, ByteBuffer> specialReader,
+				BiConsumer<K, ByteBuffer> writeConflictHandler) {
+			this.specialEntries.add(new IntPackedSectorMap.SpecialSectorMapEntry<>(marker, value, specialReader, writeConflictHandler));
+			return this;
+		}
+
 		public Region<K> build() throws IOException {
 			SeekableByteChannel file = Files.newByteChannel(directory.resolve(regionKey.getName()), CREATE, READ, WRITE);
 
@@ -231,10 +265,10 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			}
 			int entryMapSectors = ceilDiv(keyProvider.getKeyCount(regionKey) * entryMapBytes, sectorSize);
 
-			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, keyProvider.getKeyCount(regionKey));
+			IntPackedSectorMap<K> sectorMap = IntPackedSectorMap.readOrCreate(file, keyProvider.getKeyCount(regionKey), specialEntries);
 			RegionSectorTracker<K> regionSectorTracker = RegionSectorTracker.fromFile(file, sectorMap, entryMapSectors, sectorSize);
 			this.headerEntryProviders.add(0, sectorMap.headerEntryProvider());
-			return new Region(file, sectorMap, regionSectorTracker,
+			return new Region<>(file, sectorMap, regionSectorTracker,
 					this.headerEntryProviders, this.regionKey, keyProvider, this.sectorSize);
 		}
 	}

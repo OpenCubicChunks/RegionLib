@@ -115,6 +115,10 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         exists.set(key.getId());
     }
 
+    @Override public void writeSpecial(K key, Object marker) throws IOException {
+        throw new UnsupportedOperationException("ExtRegion doesn't support special values");
+    }
+
     @Override public Optional<ByteBuffer> readValue(K key) throws IOException {
         if (!exists.get(key.getId())) {
             return Optional.empty();

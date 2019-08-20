@@ -24,7 +24,11 @@
 package cubicchunks.regionlib.lib.header;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntry;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
@@ -40,9 +44,18 @@ public interface IKeyIdToSectorMap<
 		return getEntryLocation(key.getId());
 	}
 
+	boolean isSpecial(RegionEntryLocation loc);
+
+	Optional<Function<K, ByteBuffer>> trySpecialValue(K key);
+
 	Optional<RegionEntryLocation> getEntryLocation(int id);
 
-	void setOffsetAndSize(K key, RegionEntryLocation location) throws IOException;
+	/**
+	 * @return optional special conflict resolution writer, if this entry location is reserved.
+	 */
+	Optional<BiConsumer<K, ByteBuffer>> setOffsetAndSize(K key, RegionEntryLocation location) throws IOException;
+
+	void setSpecial(K key, Object marker);
 
 	P headerEntryProvider();
 }

@@ -23,6 +23,8 @@
  */
 package cubicchunks.regionlib.lib;
 
+import cubicchunks.regionlib.api.region.key.IKey;
+
 public class RegionEntryLocation {
 	private final int offset;
 	private final int size;

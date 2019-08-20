@@ -128,6 +128,9 @@ public class RegionSectorTracker<K extends IKey<K>> {
 		}
 		// mark used sectors
 		for (RegionEntryLocation loc : sectorMap) {
+		    if (sectorMap.isSpecial(loc)) {
+		        continue;
+            }
 			int offset = loc.getOffset();
 			int size = loc.getSize();
 			for (int i = 0; i < size; i++) {
