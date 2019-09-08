@@ -45,13 +45,13 @@ public class TestCubeColumns {
 	@Rule
 	public TemporaryFolder folder = new TemporaryFolder();
 
-	/*@Test*/ public void testSimpleWriteRead() throws IOException {
+	@Test public void testSimpleWriteRead() throws IOException {
 		Path path = folder.newFolder("save").toPath();
 		SaveCubeColumns save = SaveCubeColumns.create(path);
 		ByteBuffer savedData = getData();
 
 		save.save3d(new EntryLocation3D(0, 0, 0), savedData);
-		ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0)).get();
+		ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0), true).get();
 
 		savedData.rewind();
 		assertEquals(savedData, loadedData);
@@ -98,7 +98,7 @@ public class TestCubeColumns {
 				ByteBuffer loaded;
 				String msg = "Reading array " + readI + " loc=" + entryLocations[readI] + " after writing " + i + " loc=" + entryLocations[i];
 				try {
-					loaded = save.load(entryLocations[readI]).get();
+					loaded = save.load(entryLocations[readI], true).get();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 					fail(msg + " ex=" + ex);

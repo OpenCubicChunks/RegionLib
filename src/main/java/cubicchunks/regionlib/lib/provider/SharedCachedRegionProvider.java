@@ -35,6 +35,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A region caching provider that uses a shared underlying cache for all instances
@@ -43,6 +46,7 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
 
     private final IRegionProvider<K> sourceProvider;
 
+    private static final ReadWriteLock lock = new ReentrantReadWriteLock();
     private static final Map<SharedCacheKey<?>, IRegion<?>> regionLocationToRegion = new ConcurrentHashMap<>(512);
     private static final int maxCacheSize = 256;
 
@@ -89,25 +93,37 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
         forRegion(key, cons, false);
     }
 
-    @Override public IRegion<K> getRegion(K key) throws IOException {
+    @SuppressWarnings("unchecked") @Override public IRegion<K> getRegion(K key) throws IOException {
         SharedCacheKey<?> sharedKey = new SharedCacheKey<>(key.getRegionKey(), sourceProvider);
-        IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-        if (r != null) {
-            regionLocationToRegion.remove(sharedKey);
-            return r;
-        } else {
-            return sourceProvider.getRegion(key);
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
+            if (r != null) {
+                regionLocationToRegion.remove(sharedKey);
+                return r;
+            } else {
+                return sourceProvider.getRegion(key);
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
 
-    @Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
+    @SuppressWarnings("unchecked") @Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
         SharedCacheKey<?> sharedKey = new SharedCacheKey<>(key.getRegionKey(), sourceProvider);
-        IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-        if (r != null) {
-            regionLocationToRegion.remove(sharedKey);
-            return Optional.of(r);
-        } else {
-            return sourceProvider.getExistingRegion(key);
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
+            if (r != null) {
+                regionLocationToRegion.remove(sharedKey);
+                return Optional.of(r);
+            } else {
+                return sourceProvider.getExistingRegion(key);
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
 
@@ -123,71 +139,106 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
             if (closed) {
                 throw new IllegalStateException("Already closed");
             }
-            this.clearRegions();
+            clearRegions();
             this.sourceProvider.close();
             this.closed = true;
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void forRegion(K location, CheckedConsumer<? super IRegion<K>, IOException> cons, boolean canCreate) throws IOException {
-        synchronized (regionLocationToRegion) {
-            if (regionLocationToRegion.size() > maxCacheSize) {
-                this.clearRegions();
+        IRegion<K> region;
+        Lock readLock = lock.readLock();
+        Lock writeLock = lock.writeLock();
+        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
+        boolean createNew = false;
+
+        readLock.lock();
+        try {
+            region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
+            if (region == null) {
+                region = sourceProvider.getExistingRegion(location).orElse(null);
+                if (region == null && canCreate) {
+                    createNew = true;
+                }
             }
 
-            SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
-            IRegion<K> region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (region == null) {
-                if (canCreate) {
-                    region = sourceProvider.getRegion(location);
-                } else {
-                    region = sourceProvider.getExistingRegion(location).orElse(null);
-                }
-                if (region != null) {
-                    regionLocationToRegion.put(sharedKey, region);
-                    cons.accept(region);
-                }
-            } else {
+            if (region != null) {
                 cons.accept(region);
+            }
+        } finally {
+            readLock.unlock();
+        }
+        if (createNew) {
+            writeLock.lock();
+            try {
+                if (regionLocationToRegion.size() > maxCacheSize) {
+                    clearRegions();
+                }
+                region = sourceProvider.getRegion(location);
+                regionLocationToRegion.put(sharedKey, region);
+                cons.accept(region);
+            } finally {
+                writeLock.unlock();
             }
         }
     }
 
-    private <R> Optional<R> fromRegion(K location, CheckedFunction<? super IRegion<K>, R, IOException> func, boolean canCreate) throws IOException {
-        synchronized (regionLocationToRegion) {
-            if (regionLocationToRegion.size() > maxCacheSize) {
-                this.clearRegions();
+    @SuppressWarnings("unchecked")
+    public <R> Optional<R> fromRegion(K location, CheckedFunction<? super IRegion<K>, R, IOException> func, boolean canCreate) throws IOException {
+        IRegion<K> region;
+        Lock readLock = lock.readLock();
+        Lock writeLock = lock.writeLock();
+        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
+        boolean createNew = false;
+
+        readLock.lock();
+        try {
+            region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
+            if (region == null) {
+                region = sourceProvider.getExistingRegion(location).orElse(null);
+                if (region == null && canCreate) {
+                    createNew = true;
+                }
             }
 
-            SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
-            IRegion<K> region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (region == null) {
-                if (canCreate) {
-                    region = sourceProvider.getRegion(location);
-                } else {
-                    region = sourceProvider.getExistingRegion(location).orElse(null);
-                }
-                if (region != null) {
-                    regionLocationToRegion.put(sharedKey, region);
-                    return Optional.of(func.apply(region));
-                }
+            if (region != null) {
+                return Optional.of(func.apply(region));
             }
-            if (region == null) {
-                return Optional.empty();
-            }
-            return Optional.of(func.apply(region));
+        } finally {
+            readLock.unlock();
         }
+        if (createNew) {
+            writeLock.lock();
+            try {
+                if (regionLocationToRegion.size() > maxCacheSize) {
+                    clearRegions();
+                }
+                region = sourceProvider.getRegion(location);
+                regionLocationToRegion.put(sharedKey, region);
+                return Optional.of(func.apply(region));
+            } finally {
+                writeLock.unlock();
+            }
+        }
+        return Optional.empty();
     }
 
     public static synchronized void clearRegions() throws IOException {
-        Iterator<IRegion<?>> it = regionLocationToRegion.values().iterator();
-        while (it.hasNext()) {
-            it.next().close();
+        lock.writeLock().lock();
+        try {
+            Iterator<IRegion<?>> it = regionLocationToRegion.values().iterator();
+            while (it.hasNext()) {
+                it.next().close();
+            }
+            regionLocationToRegion.clear();
+        } finally {
+            lock.writeLock().unlock();
         }
-        regionLocationToRegion.clear();
     }
 
     private static class SharedCacheKey<K extends IKey<K>> {
+
         private final RegionKey regionKey;
         private final IRegionProvider<K> regionProvider;
 

@@ -87,12 +87,13 @@ public class SaveCubeColumns implements Closeable {
 	 * This can be accessed from multiple threads. (thread safe)
      *
      * @param location the location of the entry data to load
-     * @throws IOException when an unexpected IO error occurs
+	 * @param createRegion if true, a new region file will be created and cached. This is the preferred option.
+	 * @throws IOException when an unexpected IO error occurs
      *
      * @return An Optional containing the value if it exists
 	 */
-	public Optional<ByteBuffer> load(EntryLocation3D location) throws IOException {
-		return saveSection3D.load(location);
+	public Optional<ByteBuffer> load(EntryLocation3D location, boolean createRegion) throws IOException {
+		return saveSection3D.load(location, createRegion);
 	}
 
 	/**
@@ -101,12 +102,13 @@ public class SaveCubeColumns implements Closeable {
 	 * This can be accessed from multiple threads. (thread safe)
      *
      * @param location the location of the entry data to load
-     * @throws IOException when an unexpected IO error occurs
+	 * @param createRegion if true, a new region file will be created and cached. This is the preferred option.
+	 * @throws IOException when an unexpected IO error occurs
      *
      * @return An Optional containing the value if it exists
 	 */
-	public Optional<ByteBuffer> load(EntryLocation2D location) throws IOException {
-		return saveSection2D.load(location);
+	public Optional<ByteBuffer> load(EntryLocation2D location, boolean createRegion) throws IOException {
+		return saveSection2D.load(location, createRegion);
 	}
 
 	/**

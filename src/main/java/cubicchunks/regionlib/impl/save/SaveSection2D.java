@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.impl.save;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,7 +63,8 @@ public class SaveSection2D extends SaveSection<SaveSection2D, EntryLocation2D> {
 				),
 				new SharedCachedRegionProvider<>(
 						new SimpleRegionProvider<>(new EntryLocation2D.Provider(), directory,
-								(keyProvider, regionKey) -> new ExtRegion<>(directory, Collections.emptyList(), keyProvider, regionKey)
+								(keyProvider, regionKey) -> new ExtRegion<>(directory, Collections.emptyList(), keyProvider, regionKey),
+								(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName() + ".ext"))
 						)
 				));
 	}

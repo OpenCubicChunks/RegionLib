@@ -50,11 +50,14 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 	private final IKeyProvider<K> keyProvider;
 	private final Path directory;
 	private final RegionFactory<K> regionBuilder;
+	private final SimpleRegionProvider.RegionExistsPredicate<K> regionExists;
 
-	public SimpleRegionProvider(IKeyProvider<K> keyProvider, Path directory, RegionFactory<K> regionBuilder) {
+	public SimpleRegionProvider(IKeyProvider<K> keyProvider, Path directory,
+			RegionFactory<K> regionBuilder, RegionExistsPredicate<K> regionExists) {
 		this.keyProvider = keyProvider;
 		this.directory = directory;
 		this.regionBuilder = regionBuilder;
+		this.regionExists = regionExists;
 	}
 
 	@Override
@@ -98,7 +101,7 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 
 	@Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
 		Path regionPath = directory.resolve(key.getRegionKey().getName());
-		if (!Files.exists(regionPath)) {
+		if (!regionExists.test(regionPath, key)) {
 			return Optional.empty();
 		}
 		IRegion<K> reg = regionBuilder.create(keyProvider, key.getRegionKey());
@@ -132,12 +135,18 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 					.setRegionKey(r)
 					.setKeyProvider(keyProv)
 					.setSectorSize(sectorSize)
-					.build()
+					.build(),
+			(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName()))
 		);
 	}
 
 	@FunctionalInterface
 	public interface RegionFactory<K extends IKey<K>> {
 		IRegion<K> create(IKeyProvider<K> keyProvider, RegionKey key) throws IOException;
+	}
+
+	@FunctionalInterface
+	public interface RegionExistsPredicate<K extends IKey<K>> {
+		boolean test(Path directory, K key) throws IOException;
 	}
 }

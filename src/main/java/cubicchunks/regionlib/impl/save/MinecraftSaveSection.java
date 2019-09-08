@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.impl.save;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
@@ -54,7 +55,8 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 								.setKeyProvider(keyProvider)
 								.setRegionKey(regionKey)
 								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
-								.build()
+								.build(),
+						(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName()))
 				)
 		));
 	}

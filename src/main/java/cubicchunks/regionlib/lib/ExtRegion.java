@@ -23,6 +23,7 @@
  */
 package cubicchunks.regionlib.lib;
 
+import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntry;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
@@ -41,6 +42,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.BitSet;
@@ -59,6 +61,8 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
 
     private final BitSet exists;
 
+    private boolean initialized = false;
+
     public ExtRegion(Path saveDirectory, List<IHeaderDataEntryProvider<?, K>> headerData, IKeyProvider<K> keyProvider, RegionKey regionKey)
             throws IOException {
         this.directory = saveDirectory.resolve(regionKey.getName() + ".ext");
@@ -74,6 +78,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         if (!Files.exists(this.directory)) {
             return;
         }
+        this.initialized = true;
         try(Stream<Path> stream = Files.list(this.directory)) {
             stream.forEach(p -> {
                 String name = p.getFileName().toString();
@@ -89,17 +94,25 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
     }
 
     @Override public void writeValue(K key, ByteBuffer value) throws IOException {
-        if (!Files.exists(this.directory)) {
+        if (value == null && (!initialized || exists.isEmpty() || !exists.get(key.getId()))) {
+            // fast path, make sure we don't create the directory when writing nothing
+            // (SaveSection makes sure to erase ext region is normal write succeeds)
+            return;
+        }
+        if (!initialized) {
             Utils.createDirectories(this.directory);
+            initialized = true;
         }
         Path file = directory.resolve(String.valueOf(key.getId()));
         if (!Files.exists(file)) {
             if (value == null) {
+                exists.clear(key.getId());
                 return;
             }
             Files.createFile(file);
         } else if (value == null) {
             Files.delete(file);
+            exists.clear(key.getId());
             return;
         }
 
@@ -120,7 +133,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
     }
 
     @Override public Optional<ByteBuffer> readValue(K key) throws IOException {
-        if (!exists.get(key.getId())) {
+        if (!initialized || !exists.get(key.getId())) {
             return Optional.empty();
         }
         Path file = directory.resolve(String.valueOf(key.getId()));
@@ -128,12 +141,15 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
             exists.set(key.getId(), false);
             return Optional.empty();
         }
-        int bytes = (int) (Files.size(file) - totalHeaderSize);
-        try (InputStream is = new BufferedInputStream(new FileInputStream(file.toFile()))) {
-            is.skip(totalHeaderSize);
-            byte[] data = new byte[bytes];
-            is.read(data);
-            return Optional.of(ByteBuffer.wrap(data));
+        try (SeekableByteChannel channel = Files.newByteChannel(file)) {
+            long size = channel.size();
+            if (size > Integer.MAX_VALUE) {
+                throw new UnsupportedDataException("Size " + size + " is too big");
+            }
+            ByteBuffer buf = ByteBuffer.wrap(new byte[(int) (size - totalHeaderSize)]);
+            channel.position(totalHeaderSize).read(buf);
+            buf.rewind();
+            return Optional.of(buf);
         }
     }
 
