@@ -138,13 +138,13 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 		for (int i = 0; i < regionProviders.size(); i++) {
 			IRegionProvider<K> p = regionProviders.get(i);
 			if (i == 0) {
-				p.forAllRegions(reg -> {
+				p.forAllRegions((key, reg) -> {
 					reg.forEachKey(cons);
 					reg.close();
 				});
 			} else {
 				int max = i;
-				p.forAllRegions(reg -> {
+				p.forAllRegions((regionKey, reg) -> {
 					reg.forEachKey(key -> {
 						// cancel if any of the providers before contain this key
 						for (int j = 0; j < max; j++) {

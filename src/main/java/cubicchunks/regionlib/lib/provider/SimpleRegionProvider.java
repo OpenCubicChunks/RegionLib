@@ -29,6 +29,7 @@ import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
 import cubicchunks.regionlib.lib.Region;
+import cubicchunks.regionlib.util.CheckedBiConsumer;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 
@@ -108,7 +109,7 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 		return Optional.of(reg);
 	}
 
-	@Override public void forAllRegions(CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException {
+	@Override public void forAllRegions(CheckedBiConsumer<RegionKey, ? super IRegion<K>, IOException> consumer) throws IOException {
 		try (Stream<Path> stream = Files.list(directory)) {
 			Iterator<RegionKey> it = stream.map(Path::getFileName)
 				.map(Path::toString)
@@ -120,7 +121,7 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 				if (!keyProvider.isValid(key)) {
 					continue;
 				}
-				consumer.accept(regionBuilder.create(keyProvider, key));
+				consumer.accept(key, regionBuilder.create(keyProvider, key));
 			}
 		}
 	}

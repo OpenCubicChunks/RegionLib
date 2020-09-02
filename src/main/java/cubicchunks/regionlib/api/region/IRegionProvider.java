@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.Optional;
 
 import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.RegionKey;
+import cubicchunks.regionlib.util.CheckedBiConsumer;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 
@@ -100,5 +102,5 @@ public interface IRegionProvider<K extends IKey<K>> extends Closeable {
 	/**
 	 * Calls the given consumer for all existing region names.
 	 */
-	void forAllRegions(CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
+	void forAllRegions(CheckedBiConsumer<RegionKey, ? super IRegion<K>, IOException> consumer) throws IOException;
 }
