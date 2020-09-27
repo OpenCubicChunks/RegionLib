@@ -116,7 +116,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
             return;
         }
 
-        try (OutputStream os = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
+        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(file))) {
             for (IHeaderDataEntryProvider<?, K> h : headerData) {
                 IHeaderDataEntry entry = h.apply(key);
                 ByteBuffer buf = ByteBuffer.allocate(h.getEntryByteCount());
