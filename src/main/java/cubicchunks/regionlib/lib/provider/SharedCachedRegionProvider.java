@@ -32,6 +32,7 @@ import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
@@ -156,14 +157,20 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
 
         readLock.lock();
         try {
-            region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (region == null) {
-                region = sourceProvider.getExistingRegion(location).orElse(null);
-                if (region == null && canCreate) {
-                    createNew = true;
-                }
+            try {
+                region = (IRegion<K>) regionLocationToRegion.computeIfAbsent(sharedKey, shared -> {
+                    try {
+                        return sourceProvider.getExistingRegion(location).orElse(null);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
             }
-
+            if (region == null && canCreate) {
+                createNew = true;
+            }
             if (region != null) {
                 cons.accept(region);
             }
@@ -195,12 +202,19 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
 
         readLock.lock();
         try {
-            region = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (region == null) {
-                region = sourceProvider.getExistingRegion(location).orElse(null);
-                if (region == null && canCreate) {
-                    createNew = true;
-                }
+            try {
+                region = (IRegion<K>) regionLocationToRegion.computeIfAbsent(sharedKey, shared -> {
+                    try {
+                        return sourceProvider.getExistingRegion(location).orElse(null);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
+            if (region == null && canCreate) {
+                createNew = true;
             }
 
             if (region != null) {
