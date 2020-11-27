@@ -177,9 +177,11 @@ public class IntPackedSectorMap<K extends IKey<K>>
 	public static <K extends IKey<K>> IntPackedSectorMap<K> readOrCreate(
 			SeekableByteChannel file, int entriesPerRegion, List<SpecialSectorMapEntry<K>> specialEntries) throws IOException {
 		int entryMappingBytes = Integer.BYTES*entriesPerRegion;
-		// add a new blank header if this file is new
+		// add a new blank header if this file is new. If the file is smaller than the header, there can't be any entries in it anyway
+		// so can be safely filled with zeros
 		if (file.size() < entryMappingBytes) {
-			file.write(ByteBuffer.allocate((int) (entryMappingBytes - file.size())));
+			file.position(0);
+			file.write(ByteBuffer.allocate(entryMappingBytes));
 		}
 		file.position(0);
 
