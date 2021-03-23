@@ -45,6 +45,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
@@ -103,20 +104,21 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
             Utils.createDirectories(this.directory);
             initialized = true;
         }
-        Path file = directory.resolve(String.valueOf(key.getId()));
+        String fileName = String.valueOf(key.getId());
+        Path file = directory.resolve(fileName);
         if (!Files.exists(file)) {
             if (value == null) {
                 exists.clear(key.getId());
                 return;
             }
-            Files.createFile(file);
         } else if (value == null) {
             Files.delete(file);
             exists.clear(key.getId());
             return;
         }
+        Path tmpFile = directory.resolve(fileName + ".tmp");
 
-        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(file))) {
+        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmpFile))) {
             for (IHeaderDataEntryProvider<?, K> h : headerData) {
                 IHeaderDataEntry entry = h.apply(key);
                 ByteBuffer buf = ByteBuffer.allocate(h.getEntryByteCount());
@@ -125,6 +127,9 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
             }
             os.write(value.array());
         }
+
+        //do an atomic move, to ensure that the file isn't only partially written in the case of a crash
+        Files.move(tmpFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         exists.set(key.getId());
     }
 
