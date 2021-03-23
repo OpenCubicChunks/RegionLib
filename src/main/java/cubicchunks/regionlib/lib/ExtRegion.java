@@ -147,7 +147,7 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
                 throw new UnsupportedDataException("Size " + size + " is too big");
             }
             ByteBuffer buf = ByteBuffer.wrap(new byte[(int) (size - totalHeaderSize)]);
-            channel.position(totalHeaderSize).read(buf);
+            Utils.readFully(channel.position(totalHeaderSize), buf);
             buf.rewind();
             return Optional.of(buf);
         }

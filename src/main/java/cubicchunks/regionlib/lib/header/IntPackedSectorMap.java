@@ -38,6 +38,7 @@ import java.util.function.Function;
 import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.lib.RegionEntryLocation;
+import cubicchunks.regionlib.util.Utils;
 
 public class IntPackedSectorMap<K extends IKey<K>>
 	implements IKeyIdToSectorMap<IntHeaderEntry, EntryLocationHeaderEntryProvider<K>, K> {
@@ -181,7 +182,7 @@ public class IntPackedSectorMap<K extends IKey<K>>
 		// so can be safely filled with zeros
 		if (file.size() < entryMappingBytes) {
 			file.position(0);
-			file.write(ByteBuffer.allocate(entryMappingBytes));
+			Utils.writeFully(file, ByteBuffer.allocate(entryMappingBytes));
 		}
 		file.position(0);
 
@@ -189,7 +190,7 @@ public class IntPackedSectorMap<K extends IKey<K>>
 
 		// read the header into entrySectorOffsets
 		ByteBuffer buffer = ByteBuffer.allocate(entryMappingBytes);
-		file.read(buffer);
+		Utils.readFully(file, buffer);
 		buffer.flip();
 		buffer.asIntBuffer().get(entrySectorOffsets);
 

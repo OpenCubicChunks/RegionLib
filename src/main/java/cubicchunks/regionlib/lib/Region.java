@@ -37,6 +37,7 @@ import cubicchunks.regionlib.lib.header.IKeyIdToSectorMap;
 import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CorruptedDataException;
+import cubicchunks.regionlib.util.Utils;
 import cubicchunks.regionlib.util.WrappedException;
 
 import java.io.IOException;
@@ -98,8 +99,8 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 		int bytesOffset = location.getOffset()*sectorSize;
 
-		file.position(bytesOffset).write(ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
-		file.write(value);
+		Utils.writeFully(file.position(bytesOffset), ByteBuffer.allocate(Integer.BYTES).putInt(0, size));
+		Utils.writeFully(file, value);
 		updateHeaders(key);
 	}
 
@@ -116,7 +117,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			ByteBuffer buf = ByteBuffer.allocate(prov.getEntryByteCount());
 			prov.apply(key).write(buf);
 			buf.flip();
-			file.position(currentHeaderBytes*keyCount + id*prov.getEntryByteCount()).write(buf);
+			Utils.writeFully(file.position(currentHeaderBytes*keyCount + id*prov.getEntryByteCount()), buf);
 			currentHeaderBytes += prov.getEntryByteCount();
 		}
 	}
@@ -140,7 +141,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 
 				ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
 
-				file.position(sectorOffset * sectorSize).read(buf);
+				Utils.readFully(file.position(sectorOffset * sectorSize), buf);
 
 				int dataLength = buf.getInt(0);
 				if (dataLength > sectorCount * sectorSize) {
@@ -149,7 +150,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 				}
 
 				ByteBuffer bytes = ByteBuffer.allocate(dataLength);
-				file.read(bytes);
+				Utils.readFully(file, bytes);
 				bytes.flip();
 				return Optional.of(bytes);
 			} catch (IOException e) {
@@ -185,7 +186,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			int extra = (int) (sectorSize - (file.size() % sectorSize));
 			ByteBuffer buffer = ByteBuffer.allocateDirect(extra);
 			this.file.position(this.file.size());
-			this.file.write(buffer);
+			Utils.writeFully(this.file, buffer);
 			assert this.file.size() % sectorSize == 0;
 		}
 		this.file.close();
