@@ -24,6 +24,8 @@
 package cubicchunks.regionlib.util;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -35,5 +37,29 @@ public class Utils {
         }
         createDirectories(dir.getParent());
         Files.createDirectory(dir);
+    }
+
+    /**
+     * Fills the given {@link ByteBuffer} with bytes read from the given {@link ByteChannel}.
+     *
+     * @param src  the channel to write to
+     * @param data the data to write
+     */
+    public static void readFully(ByteChannel src, ByteBuffer data) throws IOException {
+        while (data.hasRemaining()) {
+            src.read(data);
+        }
+    }
+
+    /**
+     * Writes the entire contents of the given {@link ByteBuffer} to the given {@link ByteChannel}.
+     *
+     * @param dst  the channel to write to
+     * @param data the data to write
+     */
+    public static void writeFully(ByteChannel dst, ByteBuffer data) throws IOException {
+        while (data.hasRemaining()) {
+            dst.write(data);
+        }
     }
 }
