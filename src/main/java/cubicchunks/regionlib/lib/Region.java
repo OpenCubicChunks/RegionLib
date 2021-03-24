@@ -42,6 +42,7 @@ import cubicchunks.regionlib.util.WrappedException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,14 +62,14 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 	private final IKeyIdToSectorMap<?, ?, K> sectorMap;
 	private final RegionSectorTracker<K> regionSectorTracker;
 
-	private final SeekableByteChannel file;
+	private final FileChannel file;
 	private final List<IHeaderDataEntryProvider<?, K>> headerEntryProviders;
 	private final int sectorSize;
 	private final RegionKey regionKey;
 	private final IKeyProvider<K> keyProvider;
 	private final int keyCount;
 
-	private Region(SeekableByteChannel file,
+	private Region(FileChannel file,
 			IntPackedSectorMap<K> sectorMap,
 			RegionSectorTracker<K> sectorTracker,
 			List<IHeaderDataEntryProvider<?, K>> headerEntryProviders,
@@ -181,7 +182,18 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		return ceilDiv(bytes, sectorSize);
 	}
 
+	@Override
+	public void flush() throws IOException {
+		this.ensureSectorSizeAligned();
+		this.file.force(false);
+	}
+
 	@Override public void close() throws IOException {
+		this.flush();
+		this.file.close();
+	}
+
+	private void ensureSectorSizeAligned() throws IOException {
 		if (file.size() % sectorSize != 0) {
 			int extra = (int) (sectorSize - (file.size() % sectorSize));
 			ByteBuffer buffer = ByteBuffer.allocateDirect(extra);
@@ -189,7 +201,6 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			Utils.writeFully(this.file, buffer);
 			assert this.file.size() % sectorSize == 0;
 		}
-		this.file.close();
 	}
 
 	private static int ceilDiv(int x, int y) {
@@ -258,7 +269,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		}
 
 		public Region<K> build() throws IOException {
-			SeekableByteChannel file = Files.newByteChannel(directory.resolve(regionKey.getName()), CREATE, READ, WRITE);
+			FileChannel file = FileChannel.open(directory.resolve(regionKey.getName()), CREATE, READ, WRITE);
 
 			int entryMapBytes = Integer.BYTES;
 			for (IHeaderDataEntryProvider<?, ?> prov : headerEntryProviders) {

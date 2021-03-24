@@ -26,8 +26,10 @@ package cubicchunks.regionlib.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class Utils {
     // Files.createDirectories doesn't handle symlinks
@@ -60,6 +62,20 @@ public class Utils {
     public static void writeFully(ByteChannel dst, ByteBuffer data) throws IOException {
         while (data.hasRemaining()) {
             dst.write(data);
+        }
+    }
+
+    /**
+     * Writes the entire contents of all of the given {@link ByteBuffer}s to the given {@link ByteChannel}.
+     *
+     * @param dst  the channel to write to
+     * @param data the data to write
+     */
+    public static void writeFully(GatheringByteChannel dst, ByteBuffer[] data) throws IOException {
+        long totalRemaining = Arrays.stream(data).mapToLong(ByteBuffer::remaining).sum();
+        long totalWritten = 0L;
+        while (totalWritten < totalRemaining) {
+            totalWritten += dst.write(data);
         }
     }
 }

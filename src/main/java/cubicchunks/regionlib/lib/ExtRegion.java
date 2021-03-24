@@ -42,14 +42,21 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import static java.nio.file.StandardCopyOption.*;
+import static java.nio.file.StandardOpenOption.*;
 
 // TODO: Optimize?
 public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
@@ -118,18 +125,23 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         }
         Path tmpFile = directory.resolve(fileName + ".tmp");
 
-        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmpFile))) {
-            for (IHeaderDataEntryProvider<?, K> h : headerData) {
-                IHeaderDataEntry entry = h.apply(key);
-                ByteBuffer buf = ByteBuffer.allocate(h.getEntryByteCount());
-                entry.write(buf);
-                os.write(buf.array());
-            }
-            os.write(value.array());
+        List<ByteBuffer> buffers = new ArrayList<>(this.headerData.size() + 1);
+        for (IHeaderDataEntryProvider<?, K> h : headerData) {
+            IHeaderDataEntry entry = h.apply(key);
+            ByteBuffer buf = ByteBuffer.allocate(h.getEntryByteCount());
+            entry.write(buf);
+            buf.flip();
+            buffers.add(buf);
+        }
+        buffers.add(value);
+
+        //write all data at once, using SYNC to ensure it's written to disk by the time the channel is closed
+        try (GatheringByteChannel channel = FileChannel.open(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING, DSYNC)) {
+            Utils.writeFully(channel, buffers.toArray(new ByteBuffer[0]));
         }
 
         //do an atomic move, to ensure that the file isn't only partially written in the case of a crash
-        Files.move(tmpFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        Files.move(tmpFile, file, ATOMIC_MOVE, REPLACE_EXISTING);
         exists.set(key.getId());
     }
 
@@ -175,6 +187,11 @@ public class ExtRegion<K extends IKey<K>> implements IRegion<K> {
         } catch (UncheckedIOException ex) {
             throw ex.getCause();
         }
+    }
+
+    @Override
+    public void flush() throws IOException {
+        //no-op
     }
 
     @Override public void close() throws IOException {
