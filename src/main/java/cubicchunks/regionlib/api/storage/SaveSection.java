@@ -24,6 +24,7 @@
 package cubicchunks.regionlib.api.storage;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ import cubicchunks.regionlib.util.CheckedConsumer;
  * @param <S> This type
  * @param <K> The location key type
  */
-public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>> implements Closeable {
+public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>> implements Flushable, Closeable {
 	private static final ByteBuffer DUMMY_EMPTY = ByteBuffer.allocate(0);
 	private final List<IRegionProvider<K>> regionProviders;
 
@@ -171,6 +172,13 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public void flush() throws IOException {
+		for (IRegionProvider<K> prov : this.regionProviders) {
+			prov.flush();
+		}
 	}
 
 	@Override

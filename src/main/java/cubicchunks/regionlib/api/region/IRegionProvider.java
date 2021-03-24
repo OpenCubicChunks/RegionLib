@@ -24,6 +24,7 @@
 package cubicchunks.regionlib.api.region;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -39,7 +40,7 @@ import cubicchunks.regionlib.util.CheckedFunction;
  *
  * @param <K> The key type
  */
-public interface IRegionProvider<K extends IKey<K>> extends Closeable {
+public interface IRegionProvider<K extends IKey<K>> extends Flushable, Closeable {
 
 	/**
 	 * Calls the given consumer with region at that location. Creates new region if one doesn't exist yet.

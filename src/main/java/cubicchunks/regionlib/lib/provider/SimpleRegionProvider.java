@@ -126,7 +126,13 @@ public class SimpleRegionProvider<K extends IKey<K>> implements IRegionProvider<
 		}
 	}
 
+	@Override
+	public void flush() throws IOException {
+		//no-op
+	}
+
 	@Override public void close() {
+		//no-op
 	}
 
 	public static <K extends IKey<K>> SimpleRegionProvider<K> createDefault(IKeyProvider<K> keyProvider, Path directory, int sectorSize) {

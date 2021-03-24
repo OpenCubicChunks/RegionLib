@@ -136,6 +136,17 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
         sourceProvider.forAllRegions(consumer);
     }
 
+    @Override
+    public void flush() throws IOException {
+        synchronized (regionLocationToRegion) {
+            if (closed) {
+                throw new IllegalStateException("Already closed");
+            }
+            flushRegions();
+            this.sourceProvider.flush();
+        }
+    }
+
     @Override public void close() throws IOException {
         synchronized (regionLocationToRegion) {
             if (closed) {
@@ -237,6 +248,18 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
             }
         }
         return Optional.empty();
+    }
+
+    public static synchronized void flushRegions() throws IOException {
+        lock.writeLock().lock();
+        try {
+            Iterator<IRegion<?>> it = regionLocationToRegion.values().iterator();
+            while (it.hasNext()) {
+                it.next().flush();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public static synchronized void clearRegions() throws IOException {

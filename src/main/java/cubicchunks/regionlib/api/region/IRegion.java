@@ -24,6 +24,7 @@
 package cubicchunks.regionlib.api.region;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
@@ -42,7 +43,7 @@ import cubicchunks.regionlib.util.CheckedConsumer;
  *
  * @param <K> The IKey type
  */
-public interface IRegion<K extends IKey<K>> extends Closeable {
+public interface IRegion<K extends IKey<K>> extends Flushable, Closeable {
 
 	/**
 	 * Stores a value at a key within this region

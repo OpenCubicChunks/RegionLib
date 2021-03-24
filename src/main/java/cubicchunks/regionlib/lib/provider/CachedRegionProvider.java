@@ -125,6 +125,15 @@ public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<
 		sourceProvider.forAllRegions(consumer);
 	}
 
+	@Override
+	public void flush() throws IOException {
+		if (closed) {
+			throw new IllegalStateException("Already closed");
+		}
+		this.flushRegions();
+		this.sourceProvider.flush();
+	}
+
 	@Override public void close() throws IOException {
 		if (closed) {
 			throw new IllegalStateException("Already closed");
@@ -176,6 +185,13 @@ public class CachedRegionProvider<K extends IKey<K>> implements IRegionProvider<
 			return Optional.empty();
 		}
 		return Optional.of(func.apply(region));
+	}
+
+	private void flushRegions() throws IOException {
+		Iterator<IRegion<K>> it = regionLocationToRegion.values().iterator();
+		while (it.hasNext()) {
+			it.next().flush();
+		}
 	}
 
 	private void clearRegions() throws IOException {
