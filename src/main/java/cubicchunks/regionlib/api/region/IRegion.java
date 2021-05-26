@@ -27,8 +27,9 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -69,15 +70,17 @@ public interface IRegion<K extends IKey<K>> extends Flushable, Closeable {
 	 * all of the keys whose values failed to be written, and stored data for failed key-value pairs must remain unchanged
 	 */
 	default void writeValues(Map<K, ByteBuffer> entries) throws IOException {
-		Map<K, UnsupportedDataException> exceptions = new HashMap<>();
+		List<UnsupportedDataException.WithKey> exceptions = new ArrayList<>();
 		for (Iterator<Map.Entry<K, ByteBuffer>> itr = entries.entrySet().iterator(); itr.hasNext(); ) {
 			Map.Entry<K, ByteBuffer> entry = itr.next();
 			try {
 				//attempt to write one value at a time
 				this.writeValue(entry.getKey(), entry.getValue());
-			} catch (UnsupportedDataException e) {
+			} catch (UnsupportedDataException.WithKey e) {
 				//remember for later
-				exceptions.put(entry.getKey(), e);
+				exceptions.add(e);
+			} catch (UnsupportedDataException e) {
+				exceptions.add(new UnsupportedDataException.WithKey(e, entry.getKey()));
 			}
 		}
 

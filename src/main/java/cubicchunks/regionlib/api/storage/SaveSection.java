@@ -137,12 +137,14 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 						positions.forEach(k -> regionEntries.put(k, pendingEntries.get(k)));
 						r.writeValues(regionEntries);
 					} catch (MultiUnsupportedDataException ex) {
+						Map<K, UnsupportedDataException> children = ex.getChildren();
+
 						//remove errored entries from the local positions set to prevent them from being cleaned up afterwards
 						//we use a stream to avoid mutating the original positionsIn list
-						positions = positions.stream().filter(((Predicate<K>) ex.<K>getChildren()::containsKey).negate()).collect(Collectors.toList());
+						positions = positions.stream().filter(((Predicate<K>) children::containsKey).negate()).collect(Collectors.toList());
 
 						//save the exception that occurred at each position for later
-						ex.<K>getChildren().forEach((k, e) -> exceptions.computeIfAbsent(k, unused -> new ArrayList<>()).add(e));
+						children.forEach((k, e) -> exceptions.computeIfAbsent(k, unused -> new ArrayList<>()).add(e));
 
 						//remove if write not successful
 						Map<K, ByteBuffer> toNulls = new HashMap<>(positions.size());

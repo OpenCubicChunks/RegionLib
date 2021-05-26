@@ -41,4 +41,32 @@ public class UnsupportedDataException extends IOException {
     public UnsupportedDataException(Throwable cause) {
         super(cause);
     }
+
+    public static class WithKey extends UnsupportedDataException {
+        private final Object key;
+
+        public WithKey(Object key) {
+            this.key = key;
+        }
+
+        public WithKey(String message, Object key) {
+            super(message);
+            this.key = key;
+        }
+
+        public WithKey(String message, Throwable cause, Object key) {
+            super(message, cause);
+            this.key = key;
+        }
+
+        public WithKey(Throwable cause, Object key) {
+            super(cause);
+            this.key = key;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <K> K getKey() {
+            return (K) key;
+        }
+    }
 }
