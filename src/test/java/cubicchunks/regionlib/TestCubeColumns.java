@@ -33,6 +33,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.impl.SaveCubeColumns;
@@ -113,6 +115,37 @@ public class TestCubeColumns {
 		System.out.println((System.nanoTime() + time)/1000000000.0 + " seconds");
 		System.out.println("Wrote total " + totalBytes + " bytes");
 		System.out.println("Read total " + totalRead + " bytes");
+	}
+
+	@Test
+	public void testBatchWrites() throws IOException {
+		Path path = folder.newFolder("save").toPath();
+
+		Random rnd = new Random(42);
+
+		Map<EntryLocation3D, ByteBuffer> entries = IntStream.range(0, 1000)
+				.mapToObj(unused -> new EntryLocation3D(rnd.nextInt(32), rnd.nextInt(32), rnd.nextInt(32))) //32 is 2* the region size per axis
+				.distinct()
+				.collect(Collectors.toMap(k -> k, k -> getData(rnd)));
+
+		try (SaveCubeColumns save = SaveCubeColumns.create(path)) {
+			save.save3d(entries);
+		}
+
+		try (SaveCubeColumns save = SaveCubeColumns.create(path)) {
+			entries.forEach((loc, data) -> {
+				ByteBuffer loaded;
+				try {
+					loaded = save.load(loc, true).get();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+					fail("Reading array loc=" + loc + " ex=" + ex);
+					throw new RuntimeException(ex);
+				}
+
+				assertArrayEquals("Reading array loc=" + loc, data.array(), loaded.array());
+			});
+		}
 	}
 
 	private ByteBuffer getData(Random rnd) {

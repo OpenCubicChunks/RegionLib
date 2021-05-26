@@ -27,8 +27,8 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 
 import cubicchunks.regionlib.impl.save.SaveSection2D;
@@ -62,11 +62,23 @@ public class SaveCubeColumns implements Flushable, Closeable {
 	 * This can be accessed from multiple threads. (thread safe)
 	 *
 	 * @param location location of the entry
-     * @param data the entry data to be saved
-     * @throws IOException when an unexpected IO error occurs
+	 * @param data the entry data to be saved
+	 * @throws IOException when an unexpected IO error occurs
 	 */
 	public void save3d(EntryLocation3D location, ByteBuffer data) throws IOException {
 		this.saveSection3D.save(location, data);
+	}
+
+	/**
+	 * Schedules entries for writing
+	 *
+	 * This can be accessed from multiple threads. (thread safe)
+	 *
+	 * @param entries the entries to be saved
+	 * @throws IOException when an unexpected IO error occurs
+	 */
+	public void save3d(Map<EntryLocation3D, ByteBuffer> entries) throws IOException {
+		this.saveSection3D.save(entries);
 	}
 
 	/**
@@ -80,6 +92,18 @@ public class SaveCubeColumns implements Flushable, Closeable {
 	 */
 	public void save2d(EntryLocation2D location, ByteBuffer data) throws IOException {
 		this.saveSection2D.save(location, data);
+	}
+
+	/**
+	 * Schedules entries for writing
+	 *
+	 * This can be accessed from multiple threads. (thread safe)
+	 *
+	 * @param entries the entries to be saved
+	 * @throws IOException when an unexpected IO error occurs
+	 */
+	public void save2d(Map<EntryLocation2D, ByteBuffer> entries) throws IOException {
+		this.saveSection2D.save(entries);
 	}
 
 	/**

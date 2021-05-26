@@ -27,8 +27,12 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
+import cubicchunks.regionlib.MultiUnsupportedDataException;
 import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
@@ -55,6 +59,33 @@ public interface IRegion<K extends IKey<K>> extends Flushable, Closeable {
 	 * unchanged after this exception is thrown
 	 */
 	void writeValue(K key, ByteBuffer value) throws IOException;
+
+	/**
+	 * Stores multiple values at their corresponding keys within this region
+	 *
+	 * @param entries the key -> value pairs to store. A value of {@code null} will remove an existing value
+	 *
+	 * @throws MultiUnsupportedDataException if the data cannot be written due to internal constraints of the storage format. The exception contains
+	 * all of the keys whose values failed to be written, and stored data for failed key -> value pairs must remain unchanged
+	 */
+	default void writeValues(Map<K, ByteBuffer> entries) throws IOException {
+		Map<K, UnsupportedDataException> exceptions = new HashMap<>();
+		for (Iterator<Map.Entry<K, ByteBuffer>> itr = entries.entrySet().iterator(); itr.hasNext(); ) {
+			Map.Entry<K, ByteBuffer> entry = itr.next();
+			try {
+				//attempt to write one value at a time
+				this.writeValue(entry.getKey(), entry.getValue());
+			} catch (UnsupportedDataException e) {
+				//remember for later
+				exceptions.put(entry.getKey(), e);
+			}
+		}
+
+		//throw all pending exceptions at once if there were any
+		if (!exceptions.isEmpty()) {
+			throw new MultiUnsupportedDataException(exceptions);
+		}
+	}
 
 	void writeSpecial(K key, Object marker) throws IOException;
 
