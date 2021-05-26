@@ -63,10 +63,10 @@ public interface IRegion<K extends IKey<K>> extends Flushable, Closeable {
 	/**
 	 * Stores multiple values at their corresponding keys within this region
 	 *
-	 * @param entries the key -> value pairs to store. A value of {@code null} will remove an existing value
+	 * @param entries the key-value pairs to store. A value of {@code null} will remove an existing value
 	 *
 	 * @throws MultiUnsupportedDataException if the data cannot be written due to internal constraints of the storage format. The exception contains
-	 * all of the keys whose values failed to be written, and stored data for failed key -> value pairs must remain unchanged
+	 * all of the keys whose values failed to be written, and stored data for failed key-value pairs must remain unchanged
 	 */
 	default void writeValues(Map<K, ByteBuffer> entries) throws IOException {
 		Map<K, UnsupportedDataException> exceptions = new HashMap<>();
