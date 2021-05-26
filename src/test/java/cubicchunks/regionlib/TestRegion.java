@@ -24,6 +24,7 @@
 package cubicchunks.regionlib;
 
 import cubicchunks.regionlib.api.region.key.IKeyProvider;
+import cubicchunks.regionlib.impl.SaveCubeColumns;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -34,6 +35,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.lib.Region;
@@ -119,6 +122,49 @@ public class TestRegion {
 		System.out.println((System.nanoTime() + time)/1000000000.0 + " seconds");
 		System.out.println("Wrote total " + totalBytes + " bytes");
 		System.out.println("Read total " + totalRead + " bytes");
+	}
+
+	@Test public void testRegionPersistenceBatchWrite() throws IOException {
+		Path path = folder.newFolder("save").toPath();
+
+		Random rnd = new Random(42);
+
+		Map<EntryLocation3D, ByteBuffer> entries = IntStream.range(0, 1000)
+				.mapToObj(unused -> new EntryLocation3D(rnd.nextInt(5), rnd.nextInt(5), rnd.nextInt(5)))
+				.distinct()
+				.collect(Collectors.toMap(k -> k, k -> getData(rnd)));
+
+		IKeyProvider<EntryLocation3D> keyProvider = new EntryLocation3D.Provider();
+		EntryLocation3D key = new EntryLocation3D(0, 0, 0);
+
+		try (Region<EntryLocation3D> save = new Region.Builder<EntryLocation3D>()
+				.setDirectory(path)
+				.setKeyProvider(keyProvider)
+				.setRegionKey(key.getRegionKey())
+				.setSectorSize(512)
+				.build()) {
+			save.writeValues(entries);
+		}
+
+		try (Region<EntryLocation3D> save = new Region.Builder<EntryLocation3D>()
+				.setDirectory(path)
+				.setKeyProvider(keyProvider)
+				.setRegionKey(key.getRegionKey())
+				.setSectorSize(512)
+				.build()) {
+			entries.forEach((loc, data) -> {
+				ByteBuffer loaded;
+				try {
+					loaded = save.readValue(loc).get();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+					fail("Reading array loc=" + loc + " ex=" + ex);
+					throw new RuntimeException(ex);
+				}
+
+				assertArrayEquals("Reading array loc=" + loc, data.array(), loaded.array());
+			});
+		}
 	}
 
 	private ByteBuffer getData(Random rnd) {

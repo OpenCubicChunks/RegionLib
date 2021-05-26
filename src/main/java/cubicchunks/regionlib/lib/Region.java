@@ -38,9 +38,9 @@ import cubicchunks.regionlib.lib.header.IntPackedSectorMap;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CorruptedDataException;
 import cubicchunks.regionlib.util.Utils;
-import cubicchunks.regionlib.util.WrappedException;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
@@ -129,8 +129,8 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 			return sectorMap.trySpecialValue(key)
 					.map(reader -> Optional.of(reader.apply(key)))
 					.orElseGet(() -> doReadKey(key));
-		} catch (WrappedException e) {
-			throw (IOException) e.get();
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
 		}
 	}
 
@@ -155,7 +155,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 				bytes.flip();
 				return Optional.of(bytes);
 			} catch (IOException e) {
-				throw new WrappedException(e);
+				throw new UncheckedIOException(e);
 			}
 		});
 	}

@@ -34,6 +34,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Random;
 
 public class TestSaveSectionFallback {
@@ -46,6 +47,18 @@ public class TestSaveSectionFallback {
         ByteBuffer savedData = getData();
 
         save.save3d(new EntryLocation3D(0, 0, 0), savedData);
+        ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0), true).get();
+
+        savedData.rewind();
+        assertEquals(savedData, loadedData);
+    }
+
+    @Test public void testFallbackBatchWrite() throws IOException {
+        Path path = folder.newFolder("save").toPath();
+        SaveCubeColumns save = SaveCubeColumns.create(path);
+        ByteBuffer savedData = getData();
+
+        save.save3d(Collections.singletonMap(new EntryLocation3D(0, 0, 0), savedData));
         ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0), true).get();
 
         savedData.rewind();

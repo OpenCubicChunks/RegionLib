@@ -21,17 +21,22 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-package cubicchunks.regionlib.util;
+package cubicchunks.regionlib;
 
-public class WrappedException extends RuntimeException {
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-	private final Throwable t;
+public class MultiUnsupportedDataException extends IOException {
+    public MultiUnsupportedDataException(List<UnsupportedDataException.WithKey> children) {
+        children.forEach(this::addSuppressed);
+    }
 
-	public WrappedException(Throwable t) {
-		this.t = t;
-	}
-
-	public <T> T get() {
-		return (T) t;
-	}
+    public <K> Map<K, UnsupportedDataException> getChildren() {
+        return Stream.of(this.getSuppressed())
+                .map(t -> (UnsupportedDataException.WithKey) t)
+                .collect(Collectors.toMap(UnsupportedDataException.WithKey::getKey, e -> e));
+    }
 }
