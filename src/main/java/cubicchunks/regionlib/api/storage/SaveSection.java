@@ -148,7 +148,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 
 						//remove if write not successful
 						Map<K, ByteBuffer> toNulls = new HashMap<>(positions.size());
-						positions.forEach(k -> toNulls.put(k, null));
+						children.forEach((k, v) -> toNulls.put(k, null));
 						r.writeValues(toNulls);
 					}
 
