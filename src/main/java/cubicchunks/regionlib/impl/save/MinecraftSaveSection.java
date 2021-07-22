@@ -31,7 +31,6 @@ import cubicchunks.regionlib.api.storage.SaveSection;
 import cubicchunks.regionlib.impl.MinecraftChunkLocation;
 import cubicchunks.regionlib.lib.Region;
 import cubicchunks.regionlib.impl.header.TimestampHeaderEntryProvider;
-import cubicchunks.regionlib.lib.provider.CachedRegionProvider;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.lib.provider.SharedCachedRegionProvider;
 import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
