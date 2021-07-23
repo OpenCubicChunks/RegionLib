@@ -32,8 +32,8 @@ import cubicchunks.regionlib.impl.MinecraftChunkLocation;
 import cubicchunks.regionlib.lib.Region;
 import cubicchunks.regionlib.impl.header.TimestampHeaderEntryProvider;
 import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.lib.factory.SimpleRegionFactory;
 import cubicchunks.regionlib.lib.provider.SharedCachedRegionProvider;
-import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
 
 public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, MinecraftChunkLocation> {
 	/**
@@ -47,7 +47,7 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 
 	public static MinecraftSaveSection createAt(Path directory, MinecraftRegionType type) {
 		return new MinecraftSaveSection(new SharedCachedRegionProvider<>(
-				new SimpleRegionProvider<>(new MinecraftChunkLocation.Provider(type.name().toLowerCase()), directory, (keyProvider, regionKey) ->
+				new SimpleRegionFactory<>(new MinecraftChunkLocation.Provider(type.name().toLowerCase()), directory, (keyProvider, regionKey) ->
 						Region.<MinecraftChunkLocation>builder()
 								.setDirectory(directory)
 								.setSectorSize(4096)
@@ -55,7 +55,7 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 								.setRegionKey(regionKey)
 								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
 								.build(),
-						(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName()))
+						(keyProvider, regionKey) -> Files.exists(directory.resolve(regionKey.getName()))
 				)
 		));
 	}

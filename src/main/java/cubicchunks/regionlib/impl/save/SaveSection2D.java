@@ -32,8 +32,8 @@ import cubicchunks.regionlib.api.storage.SaveSection;
 import cubicchunks.regionlib.impl.EntryLocation2D;
 import cubicchunks.regionlib.lib.ExtRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.lib.factory.SimpleRegionFactory;
 import cubicchunks.regionlib.lib.provider.SharedCachedRegionProvider;
-import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
 
 public class SaveSection2D extends SaveSection<SaveSection2D, EntryLocation2D> {
 	/**
@@ -58,12 +58,12 @@ public class SaveSection2D extends SaveSection<SaveSection2D, EntryLocation2D> {
 	public static SaveSection2D createAt(Path directory) {
 		return new SaveSection2D(
 				new SharedCachedRegionProvider<>(
-						SimpleRegionProvider.createDefault(new EntryLocation2D.Provider(), directory, 512)
+						SimpleRegionFactory.createDefault(new EntryLocation2D.Provider(), directory, 512)
 				),
 				new SharedCachedRegionProvider<>(
-						new SimpleRegionProvider<>(new EntryLocation2D.Provider(), directory,
+						new SimpleRegionFactory<>(new EntryLocation2D.Provider(), directory,
 								(keyProvider, regionKey) -> new ExtRegion<>(directory, Collections.emptyList(), keyProvider, regionKey),
-								(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName() + ".ext"))
+								(keyProvider, regionKey) -> Files.exists(directory.resolve(regionKey.getName() + ".ext"))
 						)
 				));
 	}

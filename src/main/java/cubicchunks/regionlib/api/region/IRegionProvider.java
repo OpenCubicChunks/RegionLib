@@ -23,16 +23,16 @@
  */
 package cubicchunks.regionlib.api.region;
 
+import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.RegionKey;
+import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CheckedFunction;
+
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.util.Optional;
-
-import cubicchunks.regionlib.api.region.key.IKey;
-import cubicchunks.regionlib.api.region.key.RegionKey;
-import cubicchunks.regionlib.util.CheckedBiConsumer;
-import cubicchunks.regionlib.util.CheckedConsumer;
-import cubicchunks.regionlib.util.CheckedFunction;
+import java.util.stream.Stream;
 
 /**
  * Provides a by-key access to Regions, also allows to get access to all existing regions.
@@ -42,66 +42,61 @@ import cubicchunks.regionlib.util.CheckedFunction;
  */
 public interface IRegionProvider<K extends IKey<K>> extends Flushable, Closeable {
 
-	/**
-	 * Calls the given consumer with region at that location. Creates new region if one doesn't exist yet.
-	 * The region will be closed automatically as needed.
-	 *
-	 * @param key The key for the IRegion
-	 * @param consumer Consumer that accepts the IRegion
-	 */
-	void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
+    /**
+     * Calls the given consumer with region at that location. Creates new region if one doesn't exist yet.
+     * The region will be closed automatically as needed.
+     *
+     * @param key      The key for the IRegion
+     * @param consumer Consumer that accepts the IRegion
+     */
+    void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
 
-	/**
-	 * Calls the given consumer with region at that location. Doesn't create new region if one doesn't exist yet.
-	 * The region will be closed automatically as needed.
-	 *
-	 * @param key The key for the IRegion
-	 *
-	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
-	 */
-	<R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
+    /**
+     * Calls the given consumer with region at that location. Doesn't create new region if one doesn't exist yet.
+     * The region will be closed automatically as needed.
+     *
+     * @param key The key for the IRegion
+     * @return An Optional containing the IRegion at {@code regionKey} if it exists
+     */
+    <R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
 
-	/**
-	 * Calls the given function with region at that location and returns value from that function. Creates new region if
-	 * one doesn't exist yet. The region will be closed automatically as needed.
-	 *
-	 * @param key The key for the IRegion
-	 */
-	<R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
+    /**
+     * Calls the given function with region at that location and returns value from that function. Creates new region if
+     * one doesn't exist yet. The region will be closed automatically as needed.
+     *
+     * @param key The key for the IRegion
+     */
+    <R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException;
 
-	/**
-	 * Calls the given function with region at that location and returns value from that function.. Doesn't create new
-	 * region if one doesn't exist yet. The region will be closed automatically as needed.
-	 *
-	 * @param key The key for the IRegion
-	 * @param consumer Accepts the given region, if it already exists
-	 */
-	void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
+    /**
+     * Calls the given function with region at that location and returns value from that function.. Doesn't create new
+     * region if one doesn't exist yet. The region will be closed automatically as needed.
+     *
+     * @param key      The key for the IRegion
+     * @param consumer Accepts the given region, if it already exists
+     */
+    void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> consumer) throws IOException;
 
-	/**
-	 * Gets an IRegion at a given region key, or create one if it does not exist. The region will not be closed
-	 * automatically. Region instance returned by this method won't be returned again, instead new one will be created
-	 * (not cached).
-	 *
-	 * @param key The key for the IRegion
-	 *
-	 * @return The IRegion at {@code regionKey}
-	 */
-	IRegion<K> getRegion(K key) throws IOException;
+    /**
+     * Gets a {@link Stream} over the keys of all the existing regions.
+     * <p>
+     * All regions that had been created at the time of this method invocation are guaranteed to be present in the returned {@link Stream}, no guarantees
+     * are made for regions created during iteration.
+     * <p>
+     * Note that the returned {@link Stream} must be closed (using {@link Stream#close()}) once no longer needed.
+     *
+     * @return a {@link Stream} over the keys of all the existing regions
+     */
+    Stream<RegionKey> allRegions() throws IOException;
 
-	/**
-	 * Gets an IRegion at a given region key, creates new one if it doesn't exist. The region will not be closed
-	 * automatically. Region instance returned by this method won't be returned again, instead new one will be created
-	 * (not cached).
-	 *
-	 * @param key The key for the IRegion
-	 *
-	 * @return An Optional containing the IRegion at {@code regionKey} if it exists
-	 */
-	Optional<IRegion<K>> getExistingRegion(K key) throws IOException;
-
-	/**
-	 * Calls the given consumer for all existing region names.
-	 */
-	void forAllRegions(CheckedBiConsumer<RegionKey, ? super IRegion<K>, IOException> consumer) throws IOException;
+    /**
+     * Gets a {@link Stream} over all already saved keys.
+     * <p>
+     * Keys saved while the {@link Stream} is being evaluated are not guaranteed to be listed.
+     * <p>
+     * Note that the returned {@link Stream} must be closed (using {@link Stream#close()}) once no longer needed.
+     *
+     * @return a {@link Stream} over all already saved keys
+     */
+    Stream<K> allKeys() throws IOException;
 }

@@ -34,7 +34,8 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class TestSaveSectionFallback {
@@ -58,7 +59,10 @@ public class TestSaveSectionFallback {
         SaveCubeColumns save = SaveCubeColumns.create(path);
         ByteBuffer savedData = getData();
 
-        save.save3d(Collections.singletonMap(new EntryLocation3D(0, 0, 0), savedData));
+        //not using Collections.singletonMap because the map is required to be mutable
+        Map<EntryLocation3D, ByteBuffer> map = new HashMap<>();
+        map.put(new EntryLocation3D(0, 0, 0), savedData);
+        save.save3d(map);
         ByteBuffer loadedData = save.load(new EntryLocation3D(0, 0, 0), true).get();
 
         savedData.rewind();
