@@ -114,11 +114,11 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
 	/**
-	 * Saves/puts multiple values at multiple keys.
+	 * Saves/puts multiple values at multiple keys
 	 * This method is thread safe.
 	 *
-	 * @param entries a mutable map containing the keys and values to save
-	 * @throws IOException when an unexpected IO error occurs. If thrown, all mappings that remain in {@code entries}
+	 * @param entries the keys and values to save
+	 * @throws IOException when an unexpected IO error occurs
 	 */
 	public void save(Map<K, ByteBuffer> entries) throws IOException {
 		Map<K, ByteBuffer> pendingEntries = new HashMap<>(entries); //duplicate to avoid mutating input entry map
@@ -129,7 +129,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 
 		for (List<K> positionsIn : positionsByRegion.values()) {
 			//for each position group (corresponding to a single region), emulate behavior of save(key, value)
-			for (IRegionProvider<K> prov : this.regionProviders) {
+			for (IRegionProvider<K> prov : regionProviders) {
 				//we can safely retrieve element 0 as an arbitrary member of the positions in this region, as the list is guaranteed to be non-empty
 				prov.forRegion(positionsIn.get(0), r -> {
 					List<K> positions = positionsIn; //copy reference to allow modification inside lambda
@@ -167,11 +167,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 			}
 		}
 
-		if (exceptions.isEmpty()) {
-			//all entries were written successfully, so nothing should be allowed to remain in the map
-			entries.clear();
-		} else {
-			entries.keySet().removeIf(((Predicate<K>) exceptions::containsKey).negate());
+		if (!exceptions.isEmpty()) {
 			throw new SaveSectionException("multiple write errors", exceptions.entrySet().stream()
 					.map(e -> new SaveSectionException("No region provider supporting key " + e.getKey() + " with data size " + entries.get(e.getKey()), e.getValue()))
 					.collect(Collectors.toList()));
