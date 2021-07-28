@@ -54,7 +54,7 @@ public class MinecraftSaveSection extends SaveSection<MinecraftSaveSection, Mine
 								.setSectorSize(4096)
 								.setKeyProvider(keyProvider)
 								.setRegionKey(regionKey)
-								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.MILLISECONDS))
+								.addHeaderEntry(new TimestampHeaderEntryProvider<>(TimeUnit.SECONDS))
 								.build(),
 						(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName()))
 				)
