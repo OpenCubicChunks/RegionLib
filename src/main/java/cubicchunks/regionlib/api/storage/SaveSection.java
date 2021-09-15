@@ -25,10 +25,12 @@ package cubicchunks.regionlib.api.storage;
 
 import cubicchunks.regionlib.MultiUnsupportedDataException;
 import cubicchunks.regionlib.UnsupportedDataException;
+import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKey;
 import cubicchunks.regionlib.api.region.key.RegionKey;
 import cubicchunks.regionlib.util.CheckedConsumer;
+import cubicchunks.regionlib.util.CheckedFunction;
 import cubicchunks.regionlib.util.SaveSectionException;
 import cubicchunks.regionlib.util.Utils;
 
@@ -37,12 +39,7 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -197,34 +194,56 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
 	/**
-	 * Gets a {@link Stream} over all the already saved keys. Keys saved while the {@link Stream} is being evaluated are not guaranteed to be listed.
+	 * Gets a {@link Stream} over all the already saved keys.
 	 * <p>
-	 * Note that the keys are not necessarily guaranteed to be distinct, although the chances of encountering a duplicate key are slim to none.
+	 * Keys added while the {@link Stream} is being evaluated may be skipped. Keys modified or removed while the {@link Stream}
+	 * is being evaluated may be skipped or duplicated.
 	 * <p>
-	 * Note that the returned {@link Stream} must be closed (using {@link Stream#close()}) once no longer needed.
+	 * The returned {@link Stream} should be closed (using {@link Stream#close()}) once no longer needed to avoid potential
+	 * resource leaks. If not closed, any resources allocated by the {@link Stream} may not be freed until the {@link Stream}
+	 * instance is garbage-collected.
 	 *
+	 * @param ensureUnique if {@code false} and this {@link SaveSection} was created with multiple {@link IRegionProvider}s,
+	 *                     some keys may be duplicated even if no keys are saved while the {@link Stream} is being
+	 *                     evaluated. Setting this parameter to {@code true} will prevent duplicate keys as long as no
+	 *                     keys are saved while the {@link Stream} is being evaluated, but comes at a substantial performance
+	 *                     cost. It is therefore strongly recommended to set it to {@code false} unless your application
+	 *                     cannot deal with duplicate keys.
 	 * @return a {@link Stream} over all already saved keys
 	 * @throws IOException when an unexpected IO error occurs
 	 */
-	public Stream<K> allKeys() throws IOException {
+	public Stream<K> allKeys(boolean ensureUnique) throws IOException {
 		List<Stream<K>> streams = new ArrayList<>(this.regionProviders.size());
 		try {
-			//the original code here did some fancy stuff with checking previous region providers to ensure there were never any duplicate key returned.
-			//  however, this isn't actually needed - when writing, we already make sure to remove keys from other region providers, which tells us
-			//  two things:
-			//  - there will never be any duplicate keys returned unless a write issued during iteration causes a key to be moved from one region provider
-			//    to another, in which case it may be returned either twice or never
-			//  - the original code actually had the exact same weakness, with the additional caveat that it's significantly slower
-			//
-			//  unfortunately, this cannot be resolved at all without one of the following:
-			//  - causing all writes to block during iteration (which would still be problematic if writes are issued *during* iteration)
-			//  - requiring every region provider to be implemented using a snapshot-capable database or CoW filesystem such as BTRFS, in order to
-			//    allow us to take a snapshot and using that as our iteration source while completely ignoring any writes issued during iteration
-			//  - reverting the unfortunate design choice of allowing multiple region providers to exist in the first place, and implementing external
-			//    regions as part of standard ones
+			if (ensureUnique) { //use old behavior to ensure keys are unique across all region providers
+				//first provider doesn't need any special handling
+				streams.add(this.regionProviders.get(0).allKeys());
 
-			for (IRegionProvider<K> regionProvider : this.regionProviders) {
-				streams.add(regionProvider.allKeys());
+				//all subsequent providers need to check all previous providers to discard the key if it's present in any of them, and discard them if found
+				for (int i = 1; i < this.regionProviders.size(); i++) {
+					int max = i; //stupid useless variable because java is dumb lol
+					streams.add(this.regionProviders.get(i).allKeys()
+							.filter(key -> {
+								try {
+									CheckedFunction<? super IRegion<K>, Boolean, IOException> function = region -> region.hasValue(key);
+									for (int j = 0; j < max; j++) {
+										if (this.regionProviders.get(j).fromExistingRegion(key, function).orElse(Boolean.FALSE)) {
+											//the provider contains the key, discard it to avoid returning it twice
+											return false;
+										}
+									}
+
+									//no other providers contained the key, so it can be returned
+									return true;
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+							}));
+				}
+			} else { //we don't care if the keys are distinct or not, so we can just concatenate all the streams and call it a day
+				for (IRegionProvider<K> regionProvider : this.regionProviders) {
+					streams.add(regionProvider.allKeys());
+				}
 			}
 		} catch (IOException e) {
 			//close any streams that may already have been created
@@ -242,11 +261,11 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	 *
 	 * @param cons Consumer that will accept all the existing regions
 	 * @throws IOException when an unexpected IO error occurs
-	 * @deprecated see {@link #allKeys()}
+	 * @deprecated see {@link #allKeys(boolean)}
 	 */
 	@Deprecated
 	public void forAllKeys(CheckedConsumer<? super K, IOException> cons) throws IOException {
-		try (Stream<K> stream = this.allKeys()) {
+		try (Stream<K> stream = this.allKeys(true)) {
 			stream.forEach(key -> {
 				try {
 					cons.accept(key);
