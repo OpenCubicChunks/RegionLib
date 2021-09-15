@@ -31,6 +31,8 @@ import cubicchunks.regionlib.util.CheckedFunction;
 import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -83,7 +85,9 @@ public interface IRegionProvider<K extends IKey<K>> extends Flushable, Closeable
      * All regions that had been created at the time of this method invocation are guaranteed to be present in the returned {@link Stream}, no guarantees
      * are made for regions created during iteration.
      * <p>
-     * Note that the returned {@link Stream} must be closed (using {@link Stream#close()}) once no longer needed.
+     * The returned {@link Stream} should be closed (using {@link Stream#close()}) once no longer needed to avoid potential
+     * resource leaks. If not closed, any resources allocated by the {@link Stream} may not be freed until the {@link Stream}
+     * instance is garbage-collected.
      *
      * @return a {@link Stream} over the keys of all the existing regions
      */
@@ -94,9 +98,24 @@ public interface IRegionProvider<K extends IKey<K>> extends Flushable, Closeable
      * <p>
      * Keys saved while the {@link Stream} is being evaluated are not guaranteed to be listed.
      * <p>
-     * Note that the returned {@link Stream} must be closed (using {@link Stream#close()}) once no longer needed.
+     * The returned {@link Stream} should be closed (using {@link Stream#close()}) once no longer needed to avoid potential
+     * resource leaks. If not closed, any resources allocated by the {@link Stream} may not be freed until the {@link Stream}
+     * instance is garbage-collected.
      *
      * @return a {@link Stream} over all already saved keys
      */
     Stream<K> allKeys() throws IOException;
+
+    /**
+     * Gets a {@link Stream} over all already saved entries.
+     * <p>
+     * Entries saved while the {@link Stream} is being evaluated are not guaranteed to be listed.
+     * <p>
+     * The returned {@link Stream} should be closed (using {@link Stream#close()}) once no longer needed to avoid potential
+     * resource leaks. If not closed, any resources allocated by the {@link Stream} may not be freed until the {@link Stream}
+     * instance is garbage-collected.
+     *
+     * @return a {@link Stream} over all already saved entries
+     */
+    Stream<Map.Entry<K, ByteBuffer>> allEntries() throws IOException;
 }

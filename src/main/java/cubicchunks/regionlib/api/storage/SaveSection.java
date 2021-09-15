@@ -255,6 +255,68 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
 	/**
+	 * Gets a {@link Stream} over all the already saved entries.
+	 * <p>
+	 * Keys added while the {@link Stream} is being evaluated may be skipped. Keys modified or removed while the {@link Stream}
+	 * is being evaluated may be skipped or duplicated.
+	 * <p>
+	 * The returned {@link Stream} should be closed (using {@link Stream#close()}) once no longer needed to avoid potential
+	 * resource leaks. If not closed, any resources allocated by the {@link Stream} may not be freed until the {@link Stream}
+	 * instance is garbage-collected.
+	 *
+	 * @param ensureUnique if {@code false} and this {@link SaveSection} was created with multiple {@link IRegionProvider}s,
+	 *                     some keys may be duplicated even if no keys are saved while the {@link Stream} is being
+	 *                     evaluated. Setting this parameter to {@code true} will prevent duplicate keys as long as no
+	 *                     keys are saved while the {@link Stream} is being evaluated, but comes at a substantial performance
+	 *                     cost. It is therefore strongly recommended to set it to {@code false} unless your application
+	 *                     cannot deal with duplicate keys.
+	 * @return a {@link Stream} over all already saved entries
+	 * @throws IOException when an unexpected IO error occurs
+	 */
+	public Stream<Map.Entry<K, ByteBuffer>> allEntries(boolean ensureUnique) throws IOException {
+		List<Stream<Map.Entry<K, ByteBuffer>>> streams = new ArrayList<>(this.regionProviders.size());
+		try {
+			if (ensureUnique) { //use old behavior to ensure keys are unique across all region providers
+				//first provider doesn't need any special handling
+				streams.add(this.regionProviders.get(0).allEntries());
+
+				//all subsequent providers need to check all previous providers to discard the key if it's present in any of them, and discard them if found
+				for (int i = 1; i < this.regionProviders.size(); i++) {
+					int max = i; //stupid useless variable because java is dumb lol
+					streams.add(this.regionProviders.get(i).allEntries()
+							.filter(entry -> {
+								K key = entry.getKey();
+								try {
+									CheckedFunction<? super IRegion<K>, Boolean, IOException> function = region -> region.hasValue(key);
+									for (int j = 0; j < max; j++) {
+										if (this.regionProviders.get(j).fromExistingRegion(key, function).orElse(Boolean.FALSE)) {
+											//the provider contains the key, discard it to avoid returning it twice
+											return false;
+										}
+									}
+
+									//no other providers contained the key, so it can be returned
+									return true;
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+							}));
+				}
+			} else { //we don't care if the keys are distinct or not, so we can just concatenate all the streams and call it a day
+				for (IRegionProvider<K> regionProvider : this.regionProviders) {
+					streams.add(regionProvider.allEntries());
+				}
+			}
+		} catch (IOException e) {
+			//close any streams that may already have been created
+			streams.forEach(Stream::close);
+			throw e;
+		}
+
+		return Utils.concat(streams);
+	}
+
+	/**
 	 * Applies the given consumer to all already saved keys. Keys saved while this method is running are not guaranteed to be listed.
 	 * <p>
 	 * Implementation note: this implementation will sacrifice overall performance for O(1) memory usage in case of many fallback region provider

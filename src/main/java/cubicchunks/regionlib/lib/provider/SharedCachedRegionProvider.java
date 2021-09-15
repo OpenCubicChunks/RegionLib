@@ -34,13 +34,11 @@ import cubicchunks.regionlib.util.CheckedFunction;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -143,6 +141,26 @@ public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionPro
                         throw new UncheckedIOException(e);
                     }
                 });
+    }
+
+    @Override
+    public Stream<Map.Entry<K, ByteBuffer>> allEntries() throws IOException {
+        if (this.closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        return this.regionFactory.allRegions()
+                .flatMap(regionKey -> {
+                    IKeyProvider<K> keyProvider = this.regionFactory.getKeyProvider();
+                    return IntStream.range(0, keyProvider.getKeyCount(regionKey)).mapToObj(id -> keyProvider.fromRegionAndId(regionKey, id));
+                })
+                .map(key -> {
+                    try {
+                        return (Map.Entry<K, ByteBuffer>) new AbstractMap.SimpleEntry<>(key, this.fromExistingRegion(key, region -> region.readValue(key).orElse(null)).orElse(null));
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                })
+                .filter(entry -> entry.getValue() != null);
     }
 
     @Override
