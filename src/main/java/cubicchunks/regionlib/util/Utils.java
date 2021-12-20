@@ -30,6 +30,8 @@ import java.nio.channels.GatheringByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
 
 public class Utils {
     // Files.createDirectories doesn't handle symlinks
@@ -76,6 +78,31 @@ public class Utils {
         long totalWritten = 0L;
         while (totalWritten < totalRemaining) {
             totalWritten += dst.write(data);
+        }
+    }
+
+    /**
+     * Concatenates the given {@link Stream}s.
+     *
+     * @param streams the {@link Stream}s to concatenate
+     * @param <T> the value type
+     * @return a {@link Stream} containing the concatenated values
+     */
+    public static <T> Stream<T> concat(List<Stream<T>> streams) {
+        switch (streams.size()) {
+            case 0:
+                return Stream.empty();
+            case 1:
+                return streams.get(0);
+            case 2:
+                return Stream.concat(streams.get(0), streams.get(1));
+            default:
+                //recursively split list in half in order to make the streams form a balanced binary tree.
+                //  this can significantly improve stream performance for parallel workloads.
+                int halfSize = streams.size() >> 1;
+                return Stream.concat(
+                        concat(streams.subList(0, halfSize)),
+                        concat(streams.subList(halfSize, streams.size())));
         }
     }
 }

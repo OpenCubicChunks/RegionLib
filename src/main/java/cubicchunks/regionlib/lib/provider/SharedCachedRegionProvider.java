@@ -24,299 +24,159 @@
 package cubicchunks.regionlib.lib.provider;
 
 import cubicchunks.regionlib.api.region.IRegion;
+import cubicchunks.regionlib.api.region.IRegionFactory;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKey;
+import cubicchunks.regionlib.api.region.key.IKeyProvider;
 import cubicchunks.regionlib.api.region.key.RegionKey;
-import cubicchunks.regionlib.util.CheckedBiConsumer;
 import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * A region caching provider that uses a shared underlying cache for all instances
  */
 public class SharedCachedRegionProvider<K extends IKey<K>> implements IRegionProvider<K> {
-
-    private final IRegionProvider<K> sourceProvider;
-
-    private static final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private static final Map<SharedCacheKey<?>, IRegion<?>> regionLocationToRegion = new ConcurrentHashMap<>(512);
-    private static final int maxCacheSize = 256;
-
-    private boolean closed;
+    private final SharedCache cache;
+    private final IRegionFactory<K> regionFactory;
+    private volatile boolean closed;
 
     /**
-     * Creates a RegionProvider using the given {@code regionFactory} and {@code maxCacheSize}
+     * Creates a RegionProvider using the given {@code regionFactory}
      *
-     * @param sourceProvider provider used as source of regions
+     * @param regionFactory {@link IRegionFactory} used as source of regions
      */
-    public SharedCachedRegionProvider(IRegionProvider<K> sourceProvider) {
-        this.sourceProvider = sourceProvider;
+    public SharedCachedRegionProvider(IRegionFactory<K> regionFactory) {
+        this(regionFactory, SharedCache.DEFAULT);
+    }
+
+    /**
+     * Creates a RegionProvider using the given {@code regionFactory} and {@code cache}
+     *
+     * @param regionFactory {@link IRegionFactory} used as source of regions
+     */
+    public SharedCachedRegionProvider(IRegionFactory<K> regionFactory, SharedCache cache) {
+        this.regionFactory = regionFactory;
+        this.cache = cache;
     }
 
     @Override
     public <R> Optional<R> fromExistingRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
-        if (closed) {
+        if (this.closed) {
             throw new IllegalStateException("Already closed");
         }
-        return fromRegion(key, func, false);
+        AtomicReference<Optional<R>> resultReference = new AtomicReference<>(Optional.empty());
+        this.cache.forRegion(key.getRegionKey(), this.regionFactory, false, region -> resultReference.set(Optional.of(func.apply(region))));
+        return resultReference.get();
     }
 
     @Override
     public <R> R fromRegion(K key, CheckedFunction<? super IRegion<K>, R, IOException> func) throws IOException {
-        if (closed) {
+        if (this.closed) {
             throw new IllegalStateException("Already closed");
         }
-        return fromRegion(key, func, true).get();
+        AtomicReference<R> resultReference = new AtomicReference<>();
+        this.cache.forRegion(key.getRegionKey(), this.regionFactory, true, region -> resultReference.set(func.apply(region)));
+        return resultReference.get();
     }
 
     @Override
     public void forRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> cons) throws IOException {
-        if (closed) {
+        if (this.closed) {
             throw new IllegalStateException("Already closed");
         }
-        forRegion(key, cons, true);
+        this.cache.forRegion(key.getRegionKey(), this.regionFactory, true, cons);
     }
 
     @Override
     public void forExistingRegion(K key, CheckedConsumer<? super IRegion<K>, IOException> cons) throws IOException {
-        if (closed) {
+        if (this.closed) {
             throw new IllegalStateException("Already closed");
         }
-        forRegion(key, cons, false);
+        this.cache.forRegion(key.getRegionKey(), this.regionFactory, false, cons);
     }
 
-    @SuppressWarnings("unchecked") @Override public IRegion<K> getRegion(K key) throws IOException {
-        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(key.getRegionKey(), sourceProvider);
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (r != null) {
-                regionLocationToRegion.remove(sharedKey);
-                return r;
-            } else {
-                return sourceProvider.getRegion(key);
-            }
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    @SuppressWarnings("unchecked") @Override public Optional<IRegion<K>> getExistingRegion(K key) throws IOException {
-        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(key.getRegionKey(), sourceProvider);
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            IRegion<K> r = (IRegion<K>) regionLocationToRegion.get(sharedKey);
-            if (r != null) {
-                regionLocationToRegion.remove(sharedKey);
-                return Optional.of(r);
-            } else {
-                return sourceProvider.getExistingRegion(key);
-            }
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    @Override public void forAllRegions(CheckedBiConsumer<RegionKey, ? super IRegion<K>, IOException> consumer) throws IOException {
-        if (closed) {
+    @Override
+    public Stream<RegionKey> allRegions() throws IOException {
+        if (this.closed) {
             throw new IllegalStateException("Already closed");
         }
-        sourceProvider.forAllRegions(consumer);
+        return this.regionFactory.allRegions();
+    }
+
+    @Override
+    public Stream<K> allKeys() throws IOException {
+        if (this.closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        return this.regionFactory.allRegions()
+                .flatMap(regionKey -> {
+                    try {
+                        IKeyProvider<K> keyProvider = this.regionFactory.getKeyProvider();
+                        int keyCount = keyProvider.getKeyCount(regionKey);
+
+                        if (keyCount == 0) { //there are no keys, break out early!
+                            return Stream.empty();
+                        }
+
+                        //find all keys in this region (IRegionProvider#fromRegionAndId is slow)
+                        List<K> keys = new ArrayList<>(keyCount);
+                        for (int id = 0; id < keyCount; id++) {
+                            keys.add(keyProvider.fromRegionAndId(regionKey, id));
+                        }
+
+                        //lock the region once to filter out keys which aren't present in the region (ArrayList#removeIf is fast)
+                        this.forExistingRegion(keys.get(0), region -> keys.removeIf(((Predicate<K>) region::hasValue).negate()));
+
+                        return keys.stream();
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+    }
+
+    @Override
+    public Stream<Map.Entry<K, ByteBuffer>> allEntries() throws IOException {
+        if (this.closed) {
+            throw new IllegalStateException("Already closed");
+        }
+        return this.regionFactory.allRegions()
+                .flatMap(regionKey -> {
+                    IKeyProvider<K> keyProvider = this.regionFactory.getKeyProvider();
+                    return IntStream.range(0, keyProvider.getKeyCount(regionKey)).mapToObj(id -> keyProvider.fromRegionAndId(regionKey, id));
+                })
+                .map(key -> {
+                    try {
+                        return (Map.Entry<K, ByteBuffer>) new AbstractMap.SimpleEntry<>(key, this.fromExistingRegion(key, region -> region.readValue(key).orElse(null)).orElse(null));
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                })
+                .filter(entry -> entry.getValue() != null);
     }
 
     @Override
     public void flush() throws IOException {
-        synchronized (regionLocationToRegion) {
-            if (closed) {
-                throw new IllegalStateException("Already closed");
-            }
-            flushRegions();
-            this.sourceProvider.flush();
+        if (this.closed) {
+            throw new IllegalStateException("Already closed");
         }
+        this.cache.flush();
     }
 
-    @Override public void close() throws IOException {
-        synchronized (regionLocationToRegion) {
-            if (closed) {
-                throw new IllegalStateException("Already closed");
-            }
-            clearRegions();
-            this.sourceProvider.close();
-            this.closed = true;
+    @Override
+    public synchronized void close() throws IOException {
+        if (this.closed) {
+            throw new IllegalStateException("Already closed");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void forRegion(K location, CheckedConsumer<? super IRegion<K>, IOException> cons, boolean canCreate) throws IOException {
-        IRegion<K> region;
-        Lock readLock = lock.readLock();
-        Lock writeLock = lock.writeLock();
-        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
-        boolean createNew = false;
-
-        readLock.lock();
-        try {
-            try {
-                region = (IRegion<K>) regionLocationToRegion.computeIfAbsent(sharedKey, shared -> {
-                    try {
-                        return sourceProvider.getExistingRegion(location).orElse(null);
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                });
-            } catch (UncheckedIOException e) {
-                throw e.getCause();
-            }
-            if (region == null && canCreate) {
-                createNew = true;
-            }
-            if (region != null) {
-                cons.accept(region);
-            }
-        } finally {
-            readLock.unlock();
-        }
-        if (createNew) {
-            writeLock.lock();
-            try {
-                if (regionLocationToRegion.size() > maxCacheSize) {
-                    clearRegions();
-                }
-                region = sourceProvider.getRegion(location);
-                regionLocationToRegion.put(sharedKey, region);
-                cons.accept(region);
-            } finally {
-                writeLock.unlock();
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public <R> Optional<R> fromRegion(K location, CheckedFunction<? super IRegion<K>, R, IOException> func, boolean canCreate) throws IOException {
-        IRegion<K> region;
-        Lock readLock = lock.readLock();
-        Lock writeLock = lock.writeLock();
-        SharedCacheKey<?> sharedKey = new SharedCacheKey<>(location.getRegionKey(), sourceProvider);
-        boolean createNew = false;
-
-        readLock.lock();
-        try {
-            try {
-                region = (IRegion<K>) regionLocationToRegion.computeIfAbsent(sharedKey, shared -> {
-                    try {
-                        return sourceProvider.getExistingRegion(location).orElse(null);
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                });
-            } catch (UncheckedIOException e) {
-                throw e.getCause();
-            }
-            if (region == null && canCreate) {
-                createNew = true;
-            }
-
-            if (region != null) {
-                return Optional.of(func.apply(region));
-            }
-        } finally {
-            readLock.unlock();
-        }
-        if (createNew) {
-            writeLock.lock();
-            try {
-                if (regionLocationToRegion.size() > maxCacheSize) {
-                    clearRegions();
-                }
-                region = sourceProvider.getRegion(location);
-                regionLocationToRegion.put(sharedKey, region);
-                return Optional.of(func.apply(region));
-            } finally {
-                writeLock.unlock();
-            }
-        }
-        return Optional.empty();
-    }
-
-    public static synchronized void flushRegions() throws IOException {
-        lock.writeLock().lock();
-        try {
-            Iterator<IRegion<?>> it = regionLocationToRegion.values().iterator();
-            while (it.hasNext()) {
-                it.next().flush();
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    public static synchronized void clearRegions() throws IOException {
-        lock.writeLock().lock();
-        try {
-            Iterator<IRegion<?>> it = regionLocationToRegion.values().iterator();
-            while (it.hasNext()) {
-                it.next().close();
-            }
-            regionLocationToRegion.clear();
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    private static class SharedCacheKey<K extends IKey<K>> {
-
-        private final RegionKey regionKey;
-        private final IRegionProvider<K> regionProvider;
-
-        private SharedCacheKey(RegionKey regionKey, IRegionProvider<K> regionProvider) {
-            this.regionKey = regionKey;
-            this.regionProvider = regionProvider;
-        }
-
-        public RegionKey getRegionKey() {
-            return regionKey;
-        }
-
-        public IRegionProvider<K> getRegionProvider() {
-            return regionProvider;
-        }
-
-        @Override public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof SharedCacheKey)) {
-                return false;
-            }
-
-            SharedCacheKey<?> that = (SharedCacheKey<?>) o;
-
-            if (!getRegionKey().equals(that.getRegionKey())) {
-                return false;
-            }
-            if (!getRegionProvider().equals(that.getRegionProvider())) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override public int hashCode() {
-            int result = getRegionKey().hashCode();
-            result = 31 * result + getRegionProvider().hashCode();
-            return result;
-        }
+        this.closed = true;
+        this.cache.close();
     }
 }

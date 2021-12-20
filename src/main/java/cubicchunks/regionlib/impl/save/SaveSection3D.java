@@ -29,13 +29,11 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import cubicchunks.regionlib.api.storage.SaveSection;
-import cubicchunks.regionlib.impl.EntryLocation2D;
 import cubicchunks.regionlib.impl.EntryLocation3D;
 import cubicchunks.regionlib.lib.ExtRegion;
-import cubicchunks.regionlib.lib.provider.CachedRegionProvider;
 import cubicchunks.regionlib.api.region.IRegionProvider;
+import cubicchunks.regionlib.lib.factory.SimpleRegionFactory;
 import cubicchunks.regionlib.lib.provider.SharedCachedRegionProvider;
-import cubicchunks.regionlib.lib.provider.SimpleRegionProvider;
 
 public class SaveSection3D extends SaveSection<SaveSection3D, EntryLocation3D> {
 	/**
@@ -50,12 +48,12 @@ public class SaveSection3D extends SaveSection<SaveSection3D, EntryLocation3D> {
 	public static SaveSection3D createAt(Path directory) {
 		return new SaveSection3D(
 				new SharedCachedRegionProvider<>(
-						SimpleRegionProvider.createDefault(new EntryLocation3D.Provider(), directory, 512)
+						SimpleRegionFactory.createDefault(new EntryLocation3D.Provider(), directory, 512)
 				),
 				new SharedCachedRegionProvider<>(
-						new SimpleRegionProvider<>(new EntryLocation3D.Provider(), directory,
+						new SimpleRegionFactory<>(new EntryLocation3D.Provider(), directory,
 								(keyProvider, regionKey) -> new ExtRegion<>(directory, Collections.emptyList(), keyProvider, regionKey),
-								(dir, key) -> Files.exists(dir.resolve(key.getRegionKey().getName() + ".ext"))
+								(keyProvider, regionKey) -> Files.exists(directory.resolve(regionKey.getName() + ".ext"))
 						)
 				));
 	}
