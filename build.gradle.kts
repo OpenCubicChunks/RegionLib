@@ -5,11 +5,7 @@ import org.ajoberstar.grgit.exception.GrgitException
 import org.ajoberstar.grgit.operation.DescribeOp
 import org.eclipse.jgit.errors.RepositoryNotFoundException
 import org.gradle.api.JavaVersion
-import org.gradle.api.internal.HasConvention
-import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.kotlin.dsl.extra
-import org.gradle.script.lang.kotlin.*
 
 buildscript {
     repositories {
@@ -19,38 +15,31 @@ buildscript {
     }
     dependencies {
         classpath("org.ajoberstar:grgit:1.4.+")
-        classpath("gradle.plugin.nl.javadude.gradle.plugins:license-gradle-plugin:0.13.1")
     }
 }
 
 group = "io.github.opencubicchunks"
 version = getProjectVersion()
 
-val licenseYear = properties["licenseYear"] as String
-val projectName = properties["projectName"] as String
-
-val sourceSets = the<JavaPluginConvention>().sourceSets!!
+val licenseYear: String by project
+val projectName: String by project
+val doRelease: String by project
 
 plugins {
     java
     signing
-    maven
-}
-apply {
-    plugin<LicensePlugin>()
+    `maven-publish`
+    id("com.github.hierynomus.license").version("0.16.1")
 }
 
 base {
-    archivesBaseName = "RegionLib"
+    archivesName.set("RegionLib")
 }
 
 // configure
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-}
+java.toolchain.languageVersion.set(JavaLanguageVersion.of(8))
 
 license {
-    val ext = (this as HasConvention).convention.extraProperties
     ext["project"] = projectName
     ext["year"] = licenseYear
     exclude("**/*.info")
@@ -65,11 +54,11 @@ license {
 }
 
 val javadocJar by tasks.creating(Jar::class) {
-    classifier = "javadoc"
+    archiveClassifier.set("javadoc")
     from(tasks["javadoc"])
 }
 val sourcesJar by tasks.creating(Jar::class) {
-    classifier = "sources"
+    archiveClassifier.set("sources")
     from(sourceSets["main"].java.srcDirs)
 }
 
@@ -77,7 +66,7 @@ val sourcesJar by tasks.creating(Jar::class) {
 // based on:
 // https://github.com/Ordinastie/MalisisCore/blob/30d8efcfd047ac9e9bc75dfb76642bd5977f0305/build.gradle#L204-L256
 // https://github.com/gradle/kotlin-dsl/blob/201534f53d93660c273e09f768557220d33810a9/samples/maven-plugin/build.gradle.kts#L10-L44
-val uploadArchives: Upload by tasks
+/*val uploadArchives: Upload by tasks
 uploadArchives.apply {
     repositories {
         withConvention(MavenRepositoryHandlerConvention::class) {
@@ -144,19 +133,20 @@ uploadArchives.apply {
             }
         }
     }
-}
+}*/
 
 // tasks must be before artifacts, don't change the order
 artifacts {
-    withGroovyBuilder {
+    archives(tasks["jar"])
+    /*withGroovyBuilder {
         "archives"(tasks["jar"], sourcesJar, javadocJar)
-    }
+    }*/
 }
 
 signing {
     isRequired = false
     // isRequired = gradle.taskGraph.hasTask("uploadArchives")
-    sign(configurations.archives)
+    sign(configurations.archives.get())
 }
 
 // repositories and deps
@@ -165,7 +155,12 @@ repositories {
 }
 
 dependencies {
-    testCompile("junit:junit:4.11")
+    testImplementation("junit:junit:4.11")
+}
+
+tasks.withType<Test>().configureEach {
+    minHeapSize = "256M"
+    maxHeapSize = "2G"
 }
 
 // returns version string according to this: http://semver.org/
