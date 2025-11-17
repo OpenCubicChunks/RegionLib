@@ -62,84 +62,160 @@ val sourcesJar by tasks.creating(Jar::class) {
     from(sourceSets["main"].java.srcDirs)
 }
 
-
-// based on:
-// https://github.com/Ordinastie/MalisisCore/blob/30d8efcfd047ac9e9bc75dfb76642bd5977f0305/build.gradle#L204-L256
-// https://github.com/gradle/kotlin-dsl/blob/201534f53d93660c273e09f768557220d33810a9/samples/maven-plugin/build.gradle.kts#L10-L44
-/*val uploadArchives: Upload by tasks
-uploadArchives.apply {
-    repositories {
-        withConvention(MavenRepositoryHandlerConvention::class) {
-            mavenDeployer {
-                // Sign Maven POM
-                beforeDeployment {
-                     signing.signPom(this)
-                }
-
-                val username = if (project.hasProperty("sonatypeUsername")) project.properties["sonatypeUsername"] else System.getenv("sonatypeUsername")
-                val password = if (project.hasProperty("sonatypePassword")) project.properties["sonatypePassword"] else System.getenv("sonatypePassword")
-
-                withGroovyBuilder {
-                    "snapshotRepository"("url" to "https://oss.sonatype.org/content/repositories/snapshots") {
-                        "authentication"("userName" to username, "password" to password)
-                    }
-
-                    "repository"("url" to "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
-                        "authentication"("userName" to username, "password" to password)
-                    }
-                }
-
-                // Maven POM generation
-                pom.project {
-                    withGroovyBuilder {
-                        "name"(projectName)
-                        "artifactId"(base.archivesBaseName.toLowerCase())
-                        "packaging"("jar")
-                        "url"("https://github.com/OpenCubicChunks/RegionLib")
-                        "description"("Minecraft-like Region data format library")
-
-
-                        "scm" {
-                            "connection"("scm:git:git://github.com/OpenCubicChunks/RegionLib.git")
-                            "developerConnection"("scm:git:ssh://git@github.com:OpenCubicChunks/RegionLib.git")
-                            "url"("https://github.com/OpenCubicChunks/RegionLib")
-                        }
-
-                        "licenses" {
-                            "license" {
-                                "name"("The MIT License")
-                                "url"("http://www.tldrlegal.com/license/mit-license")
-                                "distribution"("repo")
-                            }
-                        }
-
-                        "developers" {
-                            "developer" {
-                                "id"("Barteks2x")
-                                "name"("Barteks2x")
-                            }
-                            "developer" {
-                                "id"("xcube16")
-                                "name"("xcube16")
-                            }
-                        }
-
-                        "issueManagement" {
-                            "system"("github")
-                            "url"("https://github.com/OpenCubicChunks/RegionLib/issues")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}*/
-
 // tasks must be before artifacts, don't change the order
 artifacts {
     archives(tasks["jar"])
     /*withGroovyBuilder {
         "archives"(tasks["jar"], sourcesJar, javadocJar)
+    }*/
+}
+
+publishing {
+    repositories {
+        //only register maven.daporkchop.net repository if these environment variables are set
+        val ossrhMavenUsername = (project.properties["OSSRH_USERNAME"] ?: System.getenv("OSSRH_USERNAME")) as String?
+        val ossrhMavenPassword = (project.properties["OSSRH_PASSWORD"] ?: System.getenv("OSSRH_PASSWORD")) as String?
+        maven {
+            name = "main"
+
+            val local = ossrhMavenUsername == null || ossrhMavenPassword == null
+            if (local) {
+                logger.warn("Username or password not set, publishing to local repository in build/mvnrepo/")
+            }
+            val localUrl = "$buildDir/mvnrepo"
+            val releasesRepoUrl = "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
+            //NOTE:
+            //
+            //Consuming Via Gradle⚓︎
+            //
+            //Configure your build.gradle file with the following:
+            //
+            //repositories {
+            //  maven {
+            //    name = 'Central Portal Snapshots'
+            //    url = 'https://central.sonatype.com/repository/maven-snapshots/'
+            //
+            //    // Only search this repository for the specific dependency
+            //    content {
+            //      includeModule("<the snapshot's groupId>", "<the snapshot's artifactId>")
+            //    }
+            //  }
+            //  mavenCentral()
+            //}
+            val snapshotsRepoUrl = "https://central.sonatype.com/repository/maven-snapshots/"
+
+            setUrl(if (local) localUrl else if (doRelease.toBoolean()) releasesRepoUrl else snapshotsRepoUrl)
+            if (!local) {
+                credentials {
+                    username = ossrhMavenUsername
+                    password = ossrhMavenPassword
+                }
+            }
+        }
+
+        //only register maven.daporkchop.net repository if these environment variables are set
+        val daporkchopMavenUsername = (project.properties["daporkchopMavenUsername"] ?: System.getenv("daporkchopMavenUsername")) as String?
+        val daporkchopMavenPassword = (project.properties["daporkchopMavenPassword"] ?: System.getenv("daporkchopMavenPassword")) as String?
+        if (daporkchopMavenUsername != null && daporkchopMavenPassword != null) {
+            maven {
+                name = "DaPorkchop_"
+
+                val releasesRepoUrl = "https://maven.daporkchop.net/release/"
+                val snapshotsRepoUrl = "https://maven.daporkchop.net/snapshot/"
+
+                setUrl(if (doRelease.toBoolean()) releasesRepoUrl else snapshotsRepoUrl)
+                credentials {
+                    username = daporkchopMavenUsername
+                    password = daporkchopMavenPassword
+                }
+            }
+        }
+    }
+    publications {
+        fun configureArtifacts(publication: MavenPublication) {
+            publication.artifact(tasks["jar"]) {
+                classifier = ""
+            }
+            publication.artifact(tasks["sourcesJar"]) {
+                classifier = "sources"
+            }
+            publication.artifact(tasks["javadocJar"]) {
+                classifier = "javadoc"
+            }
+        }
+
+        fun configurePom(publication: MavenPublication) {
+            publication.pom {
+                name.set(projectName)
+                description.set("Minecraft-like Region data format library")
+                packaging = "jar"
+                url.set("https://github.com/OpenCubicChunks/RegionLib")
+                scm {
+                    connection.set("scm:git:git://github.com/OpenCubicChunks/RegionLib.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:OpenCubicChunks/RegionLib.git")
+                    url.set("https://github.com/OpenCubicChunks/RegionLib")
+                }
+
+                licenses {
+                    license {
+                        name.set("The MIT License")
+                        url.set("http://www.tldrlegal.com/license/mit-license")
+                        distribution.set("repo")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("Barteks2x")
+                        name.set("Barteks2x")
+                    }
+                    developer {
+                        id.set("xcube16")
+                        name.set("xcube16")
+                    }
+                    // TODO: add more developers
+                }
+
+                issueManagement {
+                    system.set("github")
+                    url.set("https://github.com/OpenCubicChunks/RegionLib/issues")
+                }
+            }
+        }
+
+        /*create<MavenPublication>("library") {
+            version = project.ext["mavenProjectVersion"]!!.toString()
+            artifactId = "regionlib"
+
+            configureArtifacts(this)
+            configurePom(this)
+        }*/
+
+        //same as "library", but using the full project version from mcGitVersion instead of mavenProjectVersion.
+        create<MavenPublication>("versionedLibrary") {
+            version = project.version.toString()
+            artifactId = "regionlib"
+
+            configureArtifacts(this)
+            configurePom(this)
+        }
+    }
+
+    //all publish tasks should depend on all of the tasks which generate the artifacts being published
+    tasks.withType<AbstractPublishToMaven>().configureEach {
+        dependsOn("jar", "sourcesJar", "javadocJar")
+    }
+
+    //this is kinda gross, but is apparently the recommended way to conditionally publish specific publications to specific repositories:
+    //  see https://docs.gradle.org/current/userguide/publishing_customization.html#sec:publishing_maven:conditional_publishing
+    /*tasks.withType<PublishToMavenRepository>().configureEach {
+        val predicate = provider {
+            (publication == publications["library"] && repository == repositories.findByName("main")) ||
+            (publication == publications["versionedLibrary"] && repository == repositories.findByName("DaPorkchop_"))
+        }
+        onlyIf("publishing library to Sonatype repository, and versioned library to DaPorkchop_ repository") {
+            predicate.get()
+        }
     }*/
 }
 
