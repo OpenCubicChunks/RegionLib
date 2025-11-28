@@ -27,6 +27,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
+import cubicchunks.regionlib.api.region.BatchReadResult;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
@@ -47,6 +48,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -123,7 +125,8 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
+	@Override
+    public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
 		// a hack because Optional can't throw checked exceptions
 		try {
 			return sectorMap.trySpecialValue(key)
@@ -134,7 +137,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		}
 	}
 
-	private Optional<ByteBuffer> doReadKey(K key) {
+    private Optional<ByteBuffer> doReadKey(K key) {
 		return sectorMap.getEntryLocation(key).flatMap(loc -> {
 			try {
 				int sectorOffset = loc.getOffset();

@@ -28,9 +28,11 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
+import cubicchunks.regionlib.api.region.BatchReadResult;
 import cubicchunks.regionlib.impl.save.SaveSection2D;
 import cubicchunks.regionlib.impl.save.SaveSection3D;
 import cubicchunks.regionlib.util.Utils;
@@ -121,6 +123,21 @@ public class SaveCubeColumns implements Flushable, Closeable {
 		return saveSection3D.load(location, createRegion);
 	}
 
+    /**
+     * Reads entry at given location.
+     * <p>
+     * This can be accessed from multiple threads. (thread safe)
+     *
+     * @param positions the locations of the entry data to load
+     * @param createRegion if true, a new region file will be created and cached. This is the preferred option.
+     * @throws IOException when an unexpected IO error occurs
+     *
+     * @return An Optional containing the value if it exists
+     */
+    public BatchReadResult<EntryLocation3D> load3D(Collection<EntryLocation3D> positions, boolean createRegion) throws IOException {
+        return saveSection3D.load(positions, createRegion);
+    }
+
 	/**
 	 * Reads entry at given location.
 	 * <p>
@@ -135,6 +152,21 @@ public class SaveCubeColumns implements Flushable, Closeable {
 	public Optional<ByteBuffer> load(EntryLocation2D location, boolean createRegion) throws IOException {
 		return saveSection2D.load(location, createRegion);
 	}
+
+    /**
+     * Reads entry at given location.
+     * <p>
+     * This can be accessed from multiple threads. (thread safe)
+     *
+     * @param positions the locations of the entry data to load
+     * @param createRegion if true, a new region file will be created and cached. This is the preferred option.
+     * @throws IOException when an unexpected IO error occurs
+     *
+     * @return An Optional containing the value if it exists
+     */
+    public BatchReadResult<EntryLocation2D> load2D(Collection<EntryLocation2D> positions, boolean createRegion) throws IOException {
+        return saveSection2D.load(positions, createRegion);
+    }
 
 	/**
 	 * @param directory directory for the save

@@ -23,8 +23,15 @@
  */
 package cubicchunks.regionlib.api.storage;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.Multimaps;
 import cubicchunks.regionlib.MultiUnsupportedDataException;
 import cubicchunks.regionlib.UnsupportedDataException;
+import cubicchunks.regionlib.api.region.BatchReadResult;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKey;
@@ -33,6 +40,7 @@ import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 import cubicchunks.regionlib.util.SaveSectionException;
 import cubicchunks.regionlib.util.Utils;
+import io.netty.buffer.ByteBuf;
 
 import java.io.Closeable;
 import java.io.Flushable;
@@ -40,6 +48,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -192,6 +201,44 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 		}
 		return Optional.empty();
 	}
+
+    public BatchReadResult<K> load(Collection<K> positions, boolean createRegion) throws IOException {
+        ListMultimap<K, IOException> exceptions = MultimapBuilder.hashKeys().arrayListValues().build();
+
+        //group positions into batches based on their containing region
+        Map<RegionKey, List<K>> positionsByRegion = positions.stream().collect(Collectors.groupingBy(IKey::getRegionKey, Collectors.toList()));
+
+        HashMap<K, ByteBuffer> loaded = new HashMap<>(positions.size());
+
+        for (List<K> inRegion : positionsByRegion.values()) {
+			CheckedConsumer<IRegion<K>, IOException> reader = region -> {
+				BatchReadResult<K> result = region.readValues(inRegion);
+
+				loaded.putAll(result.read);
+				result.errored.forEach(exceptions::put);
+			};
+
+            //for each position group (corresponding to a single region), emulate behavior of save(key, value)
+            for (IRegionProvider<K> prov : regionProviders) {
+
+                //we can safely retrieve element 0 as an arbitrary member of the positions in this region, as the list is guaranteed to be non-empty
+                if (createRegion) {
+                    prov.forRegion(inRegion.get(0), reader);
+                } else {
+                    prov.forExistingRegion(inRegion.get(0), reader);
+                }
+            }
+        }
+
+        Map<K, IOException> errored = Multimaps.asMap(exceptions)
+            .entrySet()
+            .stream()
+            .collect(Collectors.toMap(
+                Entry::getKey,
+                e -> new SaveSectionException("Could not load object: " + e.getKey(), e.getValue())));
+
+        return new BatchReadResult<>(loaded, errored);
+    }
 
 	/**
 	 * Gets a {@link Stream} over all the already saved keys.

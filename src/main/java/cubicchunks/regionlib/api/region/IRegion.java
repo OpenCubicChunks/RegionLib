@@ -28,6 +28,8 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +102,30 @@ public interface IRegion<K extends IKey<K>> extends Flushable, Closeable {
 	 * @return The value at {@code key} if it exists
 	 */
 	Optional<ByteBuffer> readValue(K key) throws IOException;
+
+    /**
+     * Reads multiple values at their corresponding keys within this region
+     *
+     * @param keys The locations to read
+     * @return An object containing all locations that were successfully read and all exceptions from locations that failed
+     */
+    default BatchReadResult<K> readValues(Collection<K> keys) {
+        HashMap<K, ByteBuffer> out = new HashMap<>(keys.size());
+        HashMap<K, IOException> errors = new HashMap<>();
+
+        for (K key : keys) {
+            try {
+                //attempt to read one value at a time
+                Optional<ByteBuffer> result = readValue(key);
+
+                if (result.isPresent()) out.put(key, result.get());
+            } catch (IOException e) {
+                errors.put(key, e);
+            }
+        }
+
+        return new BatchReadResult<>(out, errors);
+    }
 
 	/**
 	 * Returns true if something was stored there before within this region.
