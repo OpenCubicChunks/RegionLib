@@ -195,6 +195,11 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 		return Optional.empty();
 	}
 
+	/// Groups position keys based on their region, so that we can call
+	/// [IRegionProvider#forRegion(IKey, CheckedConsumer)] as little as possible.
+	/// Most positions will be in a few regions, so loading a new region for each is pointless.
+	/// Regions could also parallelize [IRegion#readValues(Collection)], but currently the default implementation is
+	/// just a simple for-each loop.
     public BatchReadResult<K> load(Collection<K> positions, boolean createRegion) throws IOException {
         Map<K, List<IOException>> exceptions = new HashMap<>();
 

@@ -27,7 +27,6 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
-import cubicchunks.regionlib.api.region.BatchReadResult;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.header.IHeaderDataEntryProvider;
