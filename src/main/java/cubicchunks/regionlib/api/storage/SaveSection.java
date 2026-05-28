@@ -23,12 +23,6 @@
  */
 package cubicchunks.regionlib.api.storage;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Multimaps;
 import cubicchunks.regionlib.MultiUnsupportedDataException;
 import cubicchunks.regionlib.UnsupportedDataException;
 import cubicchunks.regionlib.api.region.BatchReadResult;
@@ -40,7 +34,6 @@ import cubicchunks.regionlib.util.CheckedConsumer;
 import cubicchunks.regionlib.util.CheckedFunction;
 import cubicchunks.regionlib.util.SaveSectionException;
 import cubicchunks.regionlib.util.Utils;
-import io.netty.buffer.ByteBuf;
 
 import java.io.Closeable;
 import java.io.Flushable;
@@ -203,7 +196,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 	}
 
     public BatchReadResult<K> load(Collection<K> positions, boolean createRegion) throws IOException {
-        ListMultimap<K, IOException> exceptions = MultimapBuilder.hashKeys().arrayListValues().build();
+        Map<K, List<IOException>> exceptions = new HashMap<>();
 
         //group positions into batches based on their containing region
         Map<RegionKey, List<K>> positionsByRegion = positions.stream().collect(Collectors.groupingBy(IKey::getRegionKey, Collectors.toList()));
@@ -215,7 +208,9 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 				BatchReadResult<K> result = region.readValues(inRegion);
 
 				loaded.putAll(result.read);
-				result.errored.forEach(exceptions::put);
+				result.errored.forEach((k, v) -> {
+					exceptions.computeIfAbsent(k, $ -> new ArrayList<>()).add(v);
+				});
 			};
 
             //for each position group (corresponding to a single region), emulate behavior of save(key, value)
@@ -230,7 +225,7 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
             }
         }
 
-        Map<K, IOException> errored = Multimaps.asMap(exceptions)
+        Map<K, IOException> errored = exceptions
             .entrySet()
             .stream()
             .collect(Collectors.toMap(
