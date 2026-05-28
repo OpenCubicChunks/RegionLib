@@ -123,7 +123,8 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		}
 	}
 
-	@Override public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
+	@Override
+    public synchronized Optional<ByteBuffer> readValue(K key) throws IOException {
 		// a hack because Optional can't throw checked exceptions
 		try {
 			return sectorMap.trySpecialValue(key)
@@ -134,7 +135,7 @@ public class Region<K extends IKey<K>> implements IRegion<K> {
 		}
 	}
 
-	private Optional<ByteBuffer> doReadKey(K key) {
+    private Optional<ByteBuffer> doReadKey(K key) {
 		return sectorMap.getEntryLocation(key).flatMap(loc -> {
 			try {
 				int sectorOffset = loc.getOffset();

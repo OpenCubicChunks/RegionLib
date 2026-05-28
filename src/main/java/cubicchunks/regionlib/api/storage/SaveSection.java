@@ -25,6 +25,7 @@ package cubicchunks.regionlib.api.storage;
 
 import cubicchunks.regionlib.MultiUnsupportedDataException;
 import cubicchunks.regionlib.UnsupportedDataException;
+import cubicchunks.regionlib.api.region.BatchReadResult;
 import cubicchunks.regionlib.api.region.IRegion;
 import cubicchunks.regionlib.api.region.IRegionProvider;
 import cubicchunks.regionlib.api.region.key.IKey;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -192,6 +194,51 @@ public abstract class SaveSection<S extends SaveSection<S, K>, K extends IKey<K>
 		}
 		return Optional.empty();
 	}
+
+	/// Groups position keys based on their region, so that we can call
+	/// [IRegionProvider#forRegion(IKey, CheckedConsumer)] as little as possible.
+	/// Most positions will be in a few regions, so loading a new region for each is pointless.
+	/// Regions could also parallelize [IRegion#readValues(Collection)], but currently the default implementation is
+	/// just a simple for-each loop.
+    public BatchReadResult<K> load(Collection<K> positions, boolean createRegion) throws IOException {
+        Map<K, List<IOException>> exceptions = new HashMap<>();
+
+        //group positions into batches based on their containing region
+        Map<RegionKey, List<K>> positionsByRegion = positions.stream().collect(Collectors.groupingBy(IKey::getRegionKey, Collectors.toList()));
+
+        HashMap<K, ByteBuffer> loaded = new HashMap<>(positions.size());
+
+        for (List<K> inRegion : positionsByRegion.values()) {
+			CheckedConsumer<IRegion<K>, IOException> reader = region -> {
+				BatchReadResult<K> result = region.readValues(inRegion);
+
+				loaded.putAll(result.read);
+				result.errored.forEach((k, v) -> {
+					exceptions.computeIfAbsent(k, $ -> new ArrayList<>()).add(v);
+				});
+			};
+
+            //for each position group (corresponding to a single region), emulate behavior of save(key, value)
+            for (IRegionProvider<K> prov : regionProviders) {
+
+                //we can safely retrieve element 0 as an arbitrary member of the positions in this region, as the list is guaranteed to be non-empty
+                if (createRegion) {
+                    prov.forRegion(inRegion.get(0), reader);
+                } else {
+                    prov.forExistingRegion(inRegion.get(0), reader);
+                }
+            }
+        }
+
+        Map<K, IOException> errored = exceptions
+            .entrySet()
+            .stream()
+            .collect(Collectors.toMap(
+                Entry::getKey,
+                e -> new SaveSectionException("Could not load object: " + e.getKey(), e.getValue())));
+
+        return new BatchReadResult<>(loaded, errored);
+    }
 
 	/**
 	 * Gets a {@link Stream} over all the already saved keys.
